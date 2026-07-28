@@ -239,7 +239,7 @@
       <span class="sky">Sky</span><span class="monster">Monster</span><span class="flight">Flight</span>
       <span class="seasonTag">SEASON 1 · FIRST FLIGHT</span>
     </div>
-    <div class="lobbyVersion">Ver. 1.1.0 · PET SHOP</div>
+    <div class="lobbyVersion">Ver. 1.1.1 · PET SHOP</div>
 
     <div class="hangarStage" aria-label="보유 기체와 펫 편대">
       <div class="hangarGlow"></div><div class="hangarRing"></div>
@@ -1176,7 +1176,7 @@ function spawnFormation(){
   const gap=Math.min(58,(W-50)/(count-1));
   const start=W/2-gap*(count-1)/2;
   const base=10;
-  const mult=Math.min(10,1+Math.floor(game.distance/50)*.02);
+  const mult=Math.min(10,1+Math.floor(game.distance/20)*.02);
   const score=Math.max(10,Math.floor(base*mult));
   const hp=getMonsterHp(game.distance);
   for(let i=0;i<count;i++){
