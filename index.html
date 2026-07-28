@@ -170,7 +170,7 @@
   #startBtn.releaseStart{position:relative;width:100%;overflow:hidden;border-radius:13px;padding:16px 12px;background:linear-gradient(180deg,#ffe277 0%,#ffb52e 48%,#ef861d 52%,#d45d12 100%);color:#281400;font-size:20px;font-weight:1000;letter-spacing:.08em;text-shadow:0 1px rgba(255,255,255,.55);box-shadow:inset 0 2px rgba(255,255,255,.65),inset 0 -3px rgba(113,44,0,.3),0 0 20px rgba(255,176,41,.3)}
   #startBtn.releaseStart::before{content:"";position:absolute;inset:2px;border:1px solid rgba(255,255,255,.42);border-radius:11px}
   #startBtn.releaseStart:active{transform:translateY(2px)}
-  .bottomDock{position:absolute;z-index:25;left:0;right:0;bottom:0;padding:8px max(10px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left));display:grid;grid-template-columns:repeat(5,1fr);gap:6px;background:linear-gradient(180deg,rgba(3,13,25,.18),rgba(3,13,25,.95) 28%);border-top:1px solid rgba(255,255,255,.09)}
+  .bottomDock{position:absolute;z-index:25;left:0;right:0;bottom:0;padding:8px max(10px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left));display:grid;grid-template-columns:repeat(6,1fr);gap:6px;background:linear-gradient(180deg,rgba(3,13,25,.18),rgba(3,13,25,.95) 28%);border-top:1px solid rgba(255,255,255,.09)}
   .dockBtn{height:58px;padding:5px 3px;border-radius:11px;background:linear-gradient(180deg,rgba(31,68,103,.9),rgba(10,30,52,.95));border:1px solid rgba(255,255,255,.1);color:#dce9f8;font-size:9px;font-weight:800;box-shadow:inset 0 1px rgba(255,255,255,.08)}
   .dockBtn .ico{display:block;margin-bottom:2px;font-size:22px}.dockBtn.primaryDock{border-color:rgba(98,215,255,.42);box-shadow:inset 0 1px rgba(255,255,255,.12),0 0 15px rgba(40,170,255,.15)}
   #panel.releasePanel{position:absolute;z-index:50;left:50%;bottom:max(76px,calc(env(safe-area-inset-bottom) + 76px));transform:translateX(-50%);width:min(500px,calc(100vw - 24px));max-height:min(56vh,520px);overflow:auto;padding:16px;border-radius:18px;background:rgba(7,24,43,.97);border:1px solid rgba(255,255,255,.16);box-shadow:0 18px 60px rgba(0,0,0,.55);backdrop-filter:blur(12px)}
@@ -239,13 +239,13 @@
       <span class="sky">Sky</span><span class="monster">Monster</span><span class="flight">Flight</span>
       <span class="seasonTag">SEASON 1 · FIRST FLIGHT</span>
     </div>
-    <div class="lobbyVersion">Ver. 1.0.0</div>
+    <div class="lobbyVersion">Ver. 1.1.0 · PET SHOP</div>
 
     <div class="hangarStage" aria-label="보유 기체와 펫 편대">
       <div class="hangarGlow"></div><div class="hangarRing"></div>
-      <div class="petWing left">🛩️<span class="petLevelTag">LEFT <b id="leftPetLevel">Lv.1</b></span></div>
+      <div id="leftPetWing" class="petWing left">🛩️<span class="petLevelTag">LEFT <b id="leftPetLevel">미보유</b></span></div>
       <div class="mainAircraft">✈️</div>
-      <div class="petWing right">🛩️<span class="petLevelTag">RIGHT <b id="rightPetLevel">Lv.1</b></span></div>
+      <div id="rightPetWing" class="petWing right">🛩️<span class="petLevelTag">RIGHT <b id="rightPetLevel">미보유</b></span></div>
       <span id="leftPetExpText" style="display:none">0 / 12</span><i id="leftPetBar" style="display:none"></i>
       <span id="rightPetExpText" style="display:none">0 / 12</span><i id="rightPetBar" style="display:none"></i>
     </div>
@@ -267,6 +267,7 @@
     <div class="bottomDock">
       <button id="questsBtn" class="dockBtn primaryDock"><span class="ico">📋</span>퀘스트</button>
       <button id="recordsBtn" class="dockBtn"><span class="ico">🏆</span>기록</button>
+      <button id="shopBtn" class="dockBtn"><span class="ico">🛒</span>상점</button>
       <button class="dockBtn" onclick="openInfoPanel('격납고','기체 강화와 외형 변경 기능이 준비될 예정입니다.')"><span class="ico">🛫</span>격납고</button>
       <button id="switchProfileBtn" class="dockBtn"><span class="ico">👤</span>파일럿</button>
       <button id="resetBtn" class="dockBtn"><span class="ico">⚙️</span>설정</button>
@@ -388,7 +389,7 @@ const defaultProfile = (nickname="") => ({
   repeatQuests:{kill30:0,fly3:0},
   dailyQuests:{date:"",flights:0,kills:0,distance:0,bosses:0,claimed:{fly2:false,kill25:false,reach1000:false,boss1:false}},
   weeklyQuests:{week:"",flights:0,kills:0,distance:0,bosses:0,claimed:{fly15:false,kill200:false,reach10000:false,boss5:false}},
-  pets:{left:{level:1,exp:0},right:{level:1,exp:0}}
+  pets:{left:{owned:false,level:1,exp:0,purchasePrice:3000},right:{owned:false,level:1,exp:0,purchasePrice:5000}}
 });
 const defaultRoot = () => ({selectedSlot:null,profiles:Array(MAX_PROFILES).fill(null)});
 
@@ -534,9 +535,24 @@ function addPetExp(pet,amount){
   while(pet.level<MAX_PET_LEVEL&&pet.exp>=petExpNeeded(pet.level)){pet.exp-=petExpNeeded(pet.level);pet.level++;}
   if(pet.level>=MAX_PET_LEVEL){pet.level=MAX_PET_LEVEL;pet.exp=0;}
 }
+function petBulletCount(level){
+  const lv=Math.max(1,Math.min(MAX_PET_LEVEL,Math.floor(level)||1));
+  if(lv>=30) return 4;
+  if(lv>=20) return 3;
+  if(lv>=10) return 2;
+  return 1;
+}
 function renderPetLobby(side){
-  const pet=saveData.pets[side], cap=pet.level>=MAX_PET_LEVEL, need=cap?1:petExpNeeded(pet.level);
-  $(side+"PetLevel").textContent=cap?"Lv.30 MAX":"Lv."+pet.level;
+  const pet=saveData.pets[side];
+  const wing=$(side+"PetWing");
+  if(!pet?.owned){
+    wing.style.display="none";
+    $(side+"PetLevel").textContent="미보유";
+    return;
+  }
+  wing.style.display="block";
+  const cap=pet.level>=MAX_PET_LEVEL, need=cap?1:petExpNeeded(pet.level);
+  $(side+"PetLevel").textContent=(cap?"Lv.30 MAX":"Lv."+pet.level)+` · ${petBulletCount(pet.level)}발`;
   $(side+"PetExpText").textContent=cap?"MAX":`${format(pet.exp)} / ${format(need)}`;
   $(side+"PetBar").style.width=cap?"100%":Math.min(100,pet.exp/need*100)+"%";
 }
@@ -583,6 +599,7 @@ $("nicknameInput").addEventListener("keydown",e=>{if(e.key==="Enter") $("createA
 
 $("startBtn").onclick=startRun;
 $("switchProfileBtn").onclick=openProfileScreen;
+$("shopBtn").onclick=renderShopPanel;
 
 function closePanel(){ $("panel").innerHTML=""; }
 function panelHeader(title){
@@ -590,6 +607,47 @@ function panelHeader(title){
 }
 function openInfoPanel(title,text){
   $("panel").innerHTML=`${panelHeader(title)}<p class="sub">${text}</p>`;
+}
+
+const PET_SHOP={
+  left:{name:"라이트 윙",icon:"🛩️",price:3000,desc:"노란 지원기 · 빠른 연사 지원"},
+  right:{name:"핑크 윙",icon:"🛩️",price:5000,desc:"분홍 지원기 · 정밀 사격 지원"}
+};
+function renderShopPanel(){
+  const a=saveData.account;
+  $("panel").innerHTML=`
+    ${panelHeader("펫 상점")}
+    <p class="tiny" style="margin-bottom:12px">펫은 처음에는 보유하지 않습니다. 구매 후 비행에서 자동 공격하며, 판매하면 구매가의 50%를 돌려받지만 펫 레벨과 경험치는 사라집니다.</p>
+    ${Object.entries(PET_SHOP).map(([side,item])=>{
+      const pet=saveData.pets[side];
+      const owned=!!pet.owned;
+      const sellPrice=Math.floor((pet.purchasePrice||item.price)*.5);
+      return `<div class="quest" style="margin-bottom:10px">
+        <div class="questTop"><span class="questTitle">${item.icon} ${item.name}</span><span class="questProgress">${side==="left"?"LEFT":"RIGHT"}</span></div>
+        <p class="tiny" style="margin:7px 0">${item.desc}</p>
+        <div class="resultLine"><span>상태</span><b>${owned?`Lv.${pet.level} · ${petBulletCount(pet.level)}발`:"미보유"}</b></div>
+        <div class="resultLine"><span>${owned?"판매가":"가격"}</span><b>🪙 ${format(owned?sellPrice:item.price)}</b></div>
+        <button class="${owned?"danger":"primary"}" style="width:100%;margin-top:10px" onclick="${owned?`sellPet('${side}')`:`buyPet('${side}')`}">${owned?"펫 판매":"펫 구매"}</button>
+      </div>`;
+    }).join("")}
+    <div class="resultLine"><span>보유 코인</span><b>🪙 ${format(a.coins)}</b></div>`;
+}
+function buyPet(side){
+  const item=PET_SHOP[side], pet=saveData.pets[side];
+  if(!item||!pet||pet.owned) return;
+  if(saveData.account.coins<item.price){alert(`코인이 부족합니다.\n필요: ${format(item.price)} 코인`);return;}
+  saveData.account.coins-=item.price;
+  saveData.pets[side]={owned:true,level:1,exp:0,purchasePrice:item.price};
+  saveGame();refreshLobby();renderShopPanel();
+}
+function sellPet(side){
+  const item=PET_SHOP[side], pet=saveData.pets[side];
+  if(!item||!pet?.owned) return;
+  const sellPrice=Math.floor((pet.purchasePrice||item.price)*.5);
+  if(!confirm(`${item.name}을(를) ${format(sellPrice)} 코인에 판매할까요?\n펫의 레벨과 경험치는 모두 사라집니다.`)) return;
+  saveData.account.coins+=sellPrice;
+  saveData.pets[side]={owned:false,level:1,exp:0,purchasePrice:item.price};
+  saveGame();refreshLobby();renderShopPanel();
 }
 
 $("resetBtn").onclick=()=>{
@@ -1037,8 +1095,18 @@ function update(dt){
     g.petShootTimer=.34;
     const pets=saveData.pets;
     const py=g.player.y-6;
-    g.bullets.push({x:g.player.x-34,y:py,v:-560,r:3,damage:petAttack(pets.left.level),pet:true});
-    g.bullets.push({x:g.player.x+34,y:py,v:-560,r:3,damage:petAttack(pets.right.level),pet:true});
+    for(const [side,offset] of [["left",-34],["right",34]]){
+      const pet=pets[side];
+      if(!pet?.owned) continue;
+      const count=petBulletCount(pet.level);
+      const totalDamage=petAttack(pet.level);
+      const damagePerBullet=totalDamage/count;
+      const spacing=8;
+      const startX=g.player.x+offset-((count-1)*spacing)/2;
+      for(let i=0;i<count;i++){
+        g.bullets.push({x:startX+i*spacing,y:py,v:-560,r:3,damage:damagePerBullet,pet:true});
+      }
+    }
   }
 
   g.spawnTimer-=dt;
@@ -1080,9 +1148,10 @@ function getPlayerAttack(level){
 
 function getPlayerBulletCount(level){
   const lv=Math.max(1,Math.min(MAX_LEVEL,Math.floor(level)||1));
-  // 30레벨마다 총알이 1발씩 증가합니다.
-  // Lv.1~30=1발, Lv.31~60=2발, ... Lv.271~300=10발
-  return Math.min(10,1+Math.floor((lv-1)/30));
+  if(lv>=31) return 4;
+  if(lv>=21) return 3;
+  if(lv>=11) return 2;
+  return 1;
 }
 
 function getMonsterHp(distance){
@@ -1598,6 +1667,8 @@ function draw(){
   const p=game.player;
   if(!(p.inv>0&&Math.floor(p.inv*12)%2===0)){
     for(const side of [-1,1]){
+      const key=side<0?"left":"right";
+      if(!saveData.pets[key]?.owned) continue;
       const px=p.x+side*34,py=p.y+6;
       ctx.save();ctx.translate(px,py);
       ctx.fillStyle=side<0?"#ffd65a":"#ff9ed8";
