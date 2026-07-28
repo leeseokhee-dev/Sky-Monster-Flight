@@ -864,7 +864,19 @@ function update(dt){
   if(g.shootTimer<=0){
     g.shootTimer=0.18;
     const playerAttack=getPlayerAttack(g.previewLevel);
-    g.bullets.push({x:g.player.x,y:g.player.y-24,v:-620,r:4,damage:playerAttack});
+    const bulletCount=getPlayerBulletCount(g.previewLevel);
+    const damagePerBullet=playerAttack*(100/bulletCount)/100;
+    const spacing=12;
+    const startX=g.player.x-((bulletCount-1)*spacing)/2;
+    for(let i=0;i<bulletCount;i++){
+      g.bullets.push({
+        x:startX+i*spacing,
+        y:g.player.y-24,
+        v:-620,
+        r:4,
+        damage:damagePerBullet
+      });
+    }
     SFX.shoot();
   }
 
@@ -914,8 +926,16 @@ function movePlayer(dt){
 
 function getPlayerAttack(level){
   const lv=Math.max(1,Math.min(MAX_LEVEL,Math.floor(level)||1));
-  // 플레이어 레벨 1당 공격력 1: Lv.1=1, Lv.300=300
+  // 플레이어 레벨 1당 총 공격력 1: Lv.1=1, Lv.300=300
+  // 총알이 여러 발이어도 한 번 발사할 때의 전체 공격력 합계는 그대로 유지됩니다.
   return lv;
+}
+
+function getPlayerBulletCount(level){
+  const lv=Math.max(1,Math.min(MAX_LEVEL,Math.floor(level)||1));
+  // 30레벨마다 총알이 1발씩 증가합니다.
+  // Lv.1~30=1발, Lv.31~60=2발, ... Lv.271~300=10발
+  return Math.min(10,1+Math.floor((lv-1)/30));
 }
 
 function getMonsterHp(distance){
@@ -940,7 +960,7 @@ function spawnFormation(){
   const gap=Math.min(58,(W-50)/(count-1));
   const start=W/2-gap*(count-1)/2;
   const base=10;
-  const mult=Math.min(10,1+Math.floor(game.distance/500)*.2);
+  const mult=Math.min(10,1+Math.floor(game.distance/50)*.02);
   const score=Math.max(10,Math.floor(base*mult));
   const hp=getMonsterHp(game.distance);
   for(let i=0;i<count;i++){
