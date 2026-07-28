@@ -239,7 +239,7 @@
       <span class="sky">Sky</span><span class="monster">Monster</span><span class="flight">Flight</span>
       <span class="seasonTag">SEASON 1 · FIRST FLIGHT</span>
     </div>
-    <div class="lobbyVersion">Ver. 1.1.1 · PET SHOP</div>
+    <div class="lobbyVersion">Ver. 1.2.0 · UPGRADE SHOP</div>
 
     <div class="hangarStage" aria-label="보유 기체와 펫 편대">
       <div class="hangarGlow"></div><div class="hangarRing"></div>
@@ -389,7 +389,8 @@ const defaultProfile = (nickname="") => ({
   repeatQuests:{kill30:0,fly3:0},
   dailyQuests:{date:"",flights:0,kills:0,distance:0,bosses:0,claimed:{fly2:false,kill25:false,reach1000:false,boss1:false}},
   weeklyQuests:{week:"",flights:0,kills:0,distance:0,bosses:0,claimed:{fly15:false,kill200:false,reach10000:false,boss5:false}},
-  pets:{left:{owned:false,level:1,exp:0,purchasePrice:3000},right:{owned:false,level:1,exp:0,purchasePrice:5000}}
+  pets:{left:{owned:false,level:1,exp:0,purchasePrice:3000},right:{owned:false,level:1,exp:0,purchasePrice:5000}},
+  upgrades:{power:0,armor:0,coinBoost:0,scoreBoost:0,mobility:0}
 });
 const defaultRoot = () => ({selectedSlot:null,profiles:Array(MAX_PROFILES).fill(null)});
 
@@ -411,7 +412,8 @@ function normalizeProfile(profile){
     pets:{
       left:{...d.pets.left,...(profile?.pets?.left||{})},
       right:{...d.pets.right,...(profile?.pets?.right||{})}
-    }
+    },
+    upgrades:{...d.upgrades,...(profile?.upgrades||{})}
   };
 }
 function loadRoot(){
@@ -613,11 +615,37 @@ const PET_SHOP={
   left:{name:"라이트 윙",icon:"🛩️",price:3000,desc:"노란 지원기 · 빠른 연사 지원"},
   right:{name:"핑크 윙",icon:"🛩️",price:5000,desc:"분홍 지원기 · 정밀 사격 지원"}
 };
+const UPGRADE_SHOP={
+  power:{name:"고출력 탄환",icon:"💥",max:20,basePrice:1200,priceRate:1.42,desc:"레벨마다 플레이어 공격력 +10%",effect:lv=>`공격력 +${lv*10}%`},
+  armor:{name:"강화 장갑",icon:"🛡️",max:5,basePrice:2200,priceRate:1.75,desc:"레벨마다 최대 체력 +1",effect:lv=>`최대 체력 +${lv}`},
+  coinBoost:{name:"코인 증폭기",icon:"🪙",max:10,basePrice:1800,priceRate:1.55,desc:"레벨마다 비행 코인 획득량 +10%",effect:lv=>`코인 +${lv*10}%`},
+  scoreBoost:{name:"점수 프로세서",icon:"📈",max:20,basePrice:1500,priceRate:1.45,desc:"레벨마다 일반 몬스터 점수 +5%",effect:lv=>`몬스터 점수 +${lv*5}%`},
+  mobility:{name:"비행 안정기",icon:"🧭",max:5,basePrice:1600,priceRate:1.7,desc:"레벨마다 좌우 이동 속도 +20",effect:lv=>`이동 속도 +${lv*20}`}
+};
+function upgradePrice(key){
+  const item=UPGRADE_SHOP[key], level=saveData.upgrades[key]||0;
+  return Math.floor(item.basePrice*Math.pow(item.priceRate,level));
+}
 function renderShopPanel(){
   const a=saveData.account;
   $("panel").innerHTML=`
-    ${panelHeader("펫 상점")}
-    <p class="tiny" style="margin-bottom:12px">펫은 처음에는 보유하지 않습니다. 구매 후 비행에서 자동 공격하며, 판매하면 구매가의 50%를 돌려받지만 펫 레벨과 경험치는 사라집니다.</p>
+    ${panelHeader("상점")}
+    <p class="tiny" style="margin-bottom:12px">모은 코인으로 영구 강화를 구매할 수 있습니다. 강화 효과는 모든 비행에 계속 적용됩니다.</p>
+    <h4 style="margin:10px 0 8px">⚙️ 영구 강화</h4>
+    ${Object.entries(UPGRADE_SHOP).map(([key,item])=>{
+      const level=saveData.upgrades[key]||0;
+      const maxed=level>=item.max;
+      const price=maxed?0:upgradePrice(key);
+      return `<div class="quest" style="margin-bottom:10px">
+        <div class="questTop"><span class="questTitle">${item.icon} ${item.name}</span><span class="questProgress">Lv.${level} / ${item.max}</span></div>
+        <p class="tiny" style="margin:7px 0">${item.desc}</p>
+        <div class="resultLine"><span>현재 효과</span><b>${item.effect(level)}</b></div>
+        <div class="resultLine"><span>${maxed?"상태":"다음 가격"}</span><b>${maxed?"MAX":`🪙 ${format(price)}`}</b></div>
+        <button class="${maxed?"ghost":"primary"}" ${maxed?"disabled":""} style="width:100%;margin-top:10px" onclick="buyUpgrade('${key}')">${maxed?"최대 강화":"강화 구매"}</button>
+      </div>`;
+    }).join("")}
+    <h4 style="margin:18px 0 8px">🛩️ 펫</h4>
+    <p class="tiny" style="margin-bottom:10px">펫은 구매 후 자동 공격합니다. 판매 시 구매가의 50%를 돌려받지만 펫 레벨과 경험치는 사라집니다.</p>
     ${Object.entries(PET_SHOP).map(([side,item])=>{
       const pet=saveData.pets[side];
       const owned=!!pet.owned;
@@ -631,6 +659,17 @@ function renderShopPanel(){
       </div>`;
     }).join("")}
     <div class="resultLine"><span>보유 코인</span><b>🪙 ${format(a.coins)}</b></div>`;
+}
+function buyUpgrade(key){
+  const item=UPGRADE_SHOP[key];
+  if(!item) return;
+  const level=saveData.upgrades[key]||0;
+  if(level>=item.max) return;
+  const price=upgradePrice(key);
+  if(saveData.account.coins<price){alert(`코인이 부족합니다.\n필요: ${format(price)} 코인`);return;}
+  saveData.account.coins-=price;
+  saveData.upgrades[key]=level+1;
+  saveGame();refreshLobby();renderShopPanel();
 }
 function buyPet(side){
   const item=PET_SHOP[side], pet=saveData.pets[side];
@@ -756,7 +795,7 @@ function renderQuestPanel(){
     ${Object.keys(WEEKLY_QUEST_DEFS).map(weeklyQuestHtml).join("")}
   `;
 }
-function questCard(def,value,claimed,action){
+function questCard(def,value,claimed,action,showOverflow=false){
   const done=value>=def.target;
   const percent=Math.min(100,value/def.target*100);
   const button=claimed
@@ -765,7 +804,7 @@ function questCard(def,value,claimed,action){
       ? `<button class="claimBtn" onclick="${action}">보상 받기</button>`
       : `<button class="claimBtn" disabled>진행 중</button>`;
   return `<div class="quest ${done?"done":""} ${claimed?"claimed":""}">
-    <div class="questTop"><span class="questTitle">${def.title}</span><span class="questProgress">${format(Math.min(value,def.target))} / ${format(def.target)}</span></div>
+    <div class="questTop"><span class="questTitle">${def.title}</span><span class="questProgress">${format(showOverflow?value:Math.min(value,def.target))} / ${format(def.target)}</span></div>
     <div class="bar" style="margin-top:8px;height:10px"><i style="width:${percent}%"></i></div>
     <div class="questRewardRow"><span class="questReward">보상 ${rewardText(def.expRate?scaledQuestReward(def):def.reward)}</span>${button}</div>
   </div>`;
@@ -775,7 +814,7 @@ function questHtml(key){
 }
 function repeatQuestHtml(key){
   const def=REPEAT_QUEST_DEFS[key];
-  return questCard(def,saveData.repeatQuests[key]||0,false,`claimRepeatQuest('${key}')`);
+  return questCard(def,saveData.repeatQuests[key]||0,false,`claimRepeatQuest('${key}')`,true);
 }
 function dailyQuestHtml(key){
   const def=DAILY_QUEST_DEFS[key];
@@ -1026,7 +1065,9 @@ function startRun(){
     monsterKills:0,bossKills:0,petExpGained:0,
     nextBossDistance:500,bossInterval:500,bossActive:false,
     spawnTimer:0, shootTimer:0, petShootTimer:0,
-    player:{x:W/2,y:H-95,w:34,h:44,hp:3,maxHp:3,speed:300,inv:0},
+    player:{x:W/2,y:H-95,w:34,h:44,
+      hp:3+(saveData.upgrades.armor||0),maxHp:3+(saveData.upgrades.armor||0),
+      speed:300+(saveData.upgrades.mobility||0)*20,inv:0},
     bullets:[], enemies:[], enemyBullets:[], particles:[], popups:[],
     stars:Array.from({length:70},()=>({x:Math.random()*W,y:Math.random()*H,s:1+Math.random()*2,v:25+Math.random()*80})),
     boss:null,
@@ -1072,8 +1113,8 @@ function update(dt){
 
   g.shootTimer-=dt;
   if(g.shootTimer<=0){
-    g.shootTimer=0.18;
-    const playerAttack=getPlayerAttack(g.previewLevel);
+    g.shootTimer=0.12;
+    const playerAttack=getPlayerAttack(g.previewLevel)*(1+(saveData.upgrades.power||0)*.10);
     const bulletCount=getPlayerBulletCount(g.previewLevel);
     const damagePerBullet=playerAttack*(100/bulletCount)/100;
     const spacing=12;
@@ -1176,8 +1217,10 @@ function spawnFormation(){
   const gap=Math.min(58,(W-50)/(count-1));
   const start=W/2-gap*(count-1)/2;
   const base=10;
-  const mult=Math.min(10,1+Math.floor(game.distance/20)*.02);
-  const score=Math.max(10,Math.floor(base*mult));
+  // 20m마다 2%씩 계속 증가하며 상한은 없습니다.
+  const distanceMult=1+Math.floor(game.distance/20)*.02;
+  const shopMult=1+(saveData.upgrades.scoreBoost||0)*.05;
+  const score=Math.max(10,Math.floor(base*distanceMult*shopMult));
   const hp=getMonsterHp(game.distance);
   for(let i=0;i<count;i++){
     game.enemies.push({
@@ -1487,7 +1530,9 @@ function gameOver(){
   f.totalBossKills+=game.bossKills;
   f.totalKillScore+=game.killScore;
 
-  saveData.account.coins+=Math.floor(game.killScore/5);
+  const baseCoins=Math.floor(game.killScore/5);
+  const coinMultiplier=1+(saveData.upgrades.coinBoost||0)*.10;
+  saveData.account.coins+=Math.floor(baseCoins*coinMultiplier);
   saveData.quests.firstFlight=true;
   saveData.quests.kill10+=game.monsterKills;
   if(game.bossKills>0) saveData.quests.firstBoss=true;
