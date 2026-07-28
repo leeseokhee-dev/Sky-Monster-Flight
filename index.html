@@ -385,6 +385,8 @@ const defaultProfile = (nickname="") => ({
   account:{nickname,level:1,exp:0,coins:0,gems:0},
   flight:{bestDistance:0,bestScore:0,totalFlights:0,totalMonsterKills:0,totalBossKills:0,totalKillScore:0},
   quests:{firstFlight:false,kill10:0,reach500:false,firstBoss:false,claimed:{firstFlight:false,kill10:false,reach500:false,firstBoss:false}},
+  repeatQuests:{kill30:0,fly3:0},
+  dailyQuests:{date:"",flights:0,kills:0,distance:0,bosses:0,claimed:{fly2:false,kill25:false,reach1000:false,boss1:false}},
   pets:{left:{level:1,exp:0},right:{level:1,exp:0}}
 });
 const defaultRoot = () => ({selectedSlot:null,profiles:Array(MAX_PROFILES).fill(null)});
@@ -401,6 +403,8 @@ function normalizeProfile(profile){
     account:{...d.account,...(profile?.account||{})},
     flight:{...d.flight,...(profile?.flight||{})},
     quests:{...d.quests,...(profile?.quests||{}),claimed:{...d.quests.claimed,...(profile?.quests?.claimed||{})}},
+    repeatQuests:{...d.repeatQuests,...(profile?.repeatQuests||{})},
+    dailyQuests:{...d.dailyQuests,...(profile?.dailyQuests||{}),claimed:{...d.dailyQuests.claimed,...(profile?.dailyQuests?.claimed||{})}},
     pets:{
       left:{...d.pets.left,...(profile?.pets?.left||{})},
       right:{...d.pets.right,...(profile?.pets?.right||{})}
@@ -609,6 +613,27 @@ const QUEST_DEFS={
   reach500:{title:"500m 도달",target:1,reward:{coins:700,gems:2,exp:150}},
   firstBoss:{title:"첫 보스 처치",target:1,reward:{coins:1000,gems:3,exp:250}}
 };
+const REPEAT_QUEST_DEFS={
+  kill30:{title:"몬스터 30마리 처치",target:30,reward:{coins:350,gems:0,exp:220}},
+  fly3:{title:"비행 3회 완료",target:3,reward:{coins:250,gems:0,exp:180}}
+};
+const DAILY_QUEST_DEFS={
+  fly2:{title:"오늘 비행 2회",target:2,field:"flights",reward:{coins:400,gems:1,exp:300}},
+  kill25:{title:"오늘 몬스터 25마리 처치",target:25,field:"kills",reward:{coins:500,gems:1,exp:400}},
+  reach1000:{title:"오늘 누적 1,000m 비행",target:1000,field:"distance",reward:{coins:700,gems:2,exp:600}},
+  boss1:{title:"오늘 보스 1마리 처치",target:1,field:"bosses",reward:{coins:900,gems:2,exp:800}}
+};
+function localDateKey(){
+  const d=new Date();
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+}
+function ensureDailyQuests(){
+  const today=localDateKey();
+  if(saveData.dailyQuests.date!==today){
+    saveData.dailyQuests={date:today,flights:0,kills:0,distance:0,bosses:0,claimed:{fly2:false,kill25:false,reach1000:false,boss1:false}};
+    saveGame();
+  }
+}
 function questValue(key){
   const q=saveData.quests;
   if(key==="firstFlight") return q.firstFlight?1:0;
@@ -625,44 +650,75 @@ function rewardText(reward){
   ].filter(Boolean).join("  ");
 }
 function renderQuestPanel(){
+  ensureDailyQuests();
   $("panel").innerHTML=`
-    ${panelHeader("초보자 퀘스트")}
-    <p class="tiny" style="margin-bottom:10px">목표를 달성하면 코인, 보석, 경험치를 받을 수 있습니다.</p>
+    ${panelHeader("퀘스트")}
+    <p class="tiny" style="margin-bottom:10px">초보자 퀘스트 외에도 반복·일일 퀘스트에서 경험치를 계속 획득할 수 있습니다.</p>
+    <h4 style="margin:12px 0 8px">🌱 초보자 퀘스트</h4>
     ${Object.keys(QUEST_DEFS).map(questHtml).join("")}
+    <h4 style="margin:18px 0 8px">♻️ 반복 퀘스트</h4>
+    ${Object.keys(REPEAT_QUEST_DEFS).map(repeatQuestHtml).join("")}
+    <h4 style="margin:18px 0 8px">☀️ 일일 퀘스트</h4>
+    <p class="tiny" style="margin:-3px 0 8px">매일 자정에 진행도가 초기화됩니다.</p>
+    ${Object.keys(DAILY_QUEST_DEFS).map(dailyQuestHtml).join("")}
   `;
 }
-function questHtml(key){
-  const def=QUEST_DEFS[key];
-  const value=questValue(key);
+function questCard(def,value,claimed,action){
   const done=value>=def.target;
-  const claimed=!!saveData.quests.claimed[key];
   const percent=Math.min(100,value/def.target*100);
   const button=claimed
     ? `<button class="claimBtn" disabled>수령 완료</button>`
     : done
-      ? `<button class="claimBtn" onclick="claimQuest('${key}')">보상 받기</button>`
+      ? `<button class="claimBtn" onclick="${action}">보상 받기</button>`
       : `<button class="claimBtn" disabled>진행 중</button>`;
   return `<div class="quest ${done?"done":""} ${claimed?"claimed":""}">
-    <div class="questTop"><span class="questTitle">${def.title}</span><span class="questProgress">${value} / ${def.target}</span></div>
+    <div class="questTop"><span class="questTitle">${def.title}</span><span class="questProgress">${format(Math.min(value,def.target))} / ${format(def.target)}</span></div>
     <div class="bar" style="margin-top:8px;height:10px"><i style="width:${percent}%"></i></div>
     <div class="questRewardRow"><span class="questReward">보상 ${rewardText(def.reward)}</span>${button}</div>
   </div>`;
 }
-function claimQuest(key){
-  const def=QUEST_DEFS[key];
-  if(!def || saveData.quests.claimed[key] || questValue(key)<def.target) return;
-  saveData.quests.claimed[key]=true;
-  saveData.account.coins+=def.reward.coins||0;
-  saveData.account.gems+=def.reward.gems||0;
-  const expResult=addSharedExp(def.reward.exp||0);
-  saveGame();
-  refreshLobby();
-  renderQuestPanel();
+function questHtml(key){
+  return questCard(QUEST_DEFS[key],questValue(key),!!saveData.quests.claimed[key],`claimQuest('${key}')`);
+}
+function repeatQuestHtml(key){
+  const def=REPEAT_QUEST_DEFS[key];
+  return questCard(def,saveData.repeatQuests[key]||0,false,`claimRepeatQuest('${key}')`);
+}
+function dailyQuestHtml(key){
+  const def=DAILY_QUEST_DEFS[key];
+  return questCard(def,saveData.dailyQuests[def.field]||0,!!saveData.dailyQuests.claimed[key],`claimDailyQuest('${key}')`);
+}
+function grantQuestReward(reward){
+  saveData.account.coins+=reward.coins||0;
+  saveData.account.gems+=reward.gems||0;
+  const expResult=addSharedExp(reward.exp||0);
   if(expResult.levelUps>0){
     SFX.levelup();
     queueLevelUpNotices(expResult.before,expResult.after);
     if(expResult.after>=MAX_LEVEL&&expResult.before<MAX_LEVEL) startMaxLevelFireworks();
   }
+}
+function claimQuest(key){
+  const def=QUEST_DEFS[key];
+  if(!def || saveData.quests.claimed[key] || questValue(key)<def.target) return;
+  saveData.quests.claimed[key]=true;
+  grantQuestReward(def.reward);
+  saveGame();refreshLobby();renderQuestPanel();
+}
+function claimRepeatQuest(key){
+  const def=REPEAT_QUEST_DEFS[key];
+  if(!def || (saveData.repeatQuests[key]||0)<def.target) return;
+  saveData.repeatQuests[key]-=def.target;
+  grantQuestReward(def.reward);
+  saveGame();refreshLobby();renderQuestPanel();
+}
+function claimDailyQuest(key){
+  ensureDailyQuests();
+  const def=DAILY_QUEST_DEFS[key];
+  if(!def || saveData.dailyQuests.claimed[key] || (saveData.dailyQuests[def.field]||0)<def.target) return;
+  saveData.dailyQuests.claimed[key]=true;
+  grantQuestReward(def.reward);
+  saveGame();refreshLobby();renderQuestPanel();
 }
 $("questsBtn").onclick=renderQuestPanel;
 
@@ -913,15 +969,10 @@ function update(dt){
 
 function movePlayer(dt){
   const p=game.player,k=game.keys;
-  let dx=(k.right?1:0)-(k.left?1:0);
-  let dy=(k.down?1:0)-(k.up?1:0);
-  if(dx||dy){
-    const len=Math.hypot(dx,dy)||1;
-    p.x+=dx/len*p.speed*dt;
-    p.y+=dy/len*p.speed*dt;
-  }
+  const dx=(k.right?1:0)-(k.left?1:0);
+  if(dx) p.x+=dx*p.speed*dt;
   p.x=Math.max(22,Math.min(W-22,p.x));
-  p.y=Math.max(88,Math.min(H-72,p.y));
+  // 플레이어는 비행 고도를 유지하며 상하로 움직이지 않습니다.
 }
 
 function getPlayerAttack(level){
@@ -1007,7 +1058,8 @@ function updateEnemies(dt){
     e.x+=Math.sin(e.y*.02+e.phase)*18*dt;
   }
   game.enemies=game.enemies.filter(e=>{
-    if(e.y>H+40){ damagePlayer(); return false; }
+    // 5마리 편대를 전부 처치하지 못해도 화면 밖으로 지나가면 피해 없이 제거됩니다.
+    if(e.y>H+40) return false;
     return true;
   });
 }
@@ -1275,6 +1327,17 @@ function gameOver(){
   saveData.quests.kill10+=game.monsterKills;
   if(game.bossKills>0) saveData.quests.firstBoss=true;
 
+  // 반복 퀘스트는 보상 수령 후 남은 진행도가 유지됩니다.
+  saveData.repeatQuests.kill30+=game.monsterKills;
+  saveData.repeatQuests.fly3+=1;
+
+  // 일일 퀘스트는 날짜가 바뀌면 자동 초기화됩니다.
+  ensureDailyQuests();
+  saveData.dailyQuests.flights+=1;
+  saveData.dailyQuests.kills+=game.monsterKills;
+  saveData.dailyQuests.distance+=Math.floor(game.distance);
+  saveData.dailyQuests.bosses+=game.bossKills;
+
   saveGame();
 
   // 게임오버 결과가 저장된 뒤에도 상단 HUD를 유지하고 최종 레벨/EXP로 갱신한다.
@@ -1497,12 +1560,17 @@ function pointerPos(ev){
 }
 canvas.addEventListener("pointerdown",e=>{
   if(!game||game.paused||game.over) return;
-  game.drag=true;canvas.setPointerCapture(e.pointerId);
-  const p=pointerPos(e);game.player.x=p.x;game.player.y=p.y;
+  const p=pointerPos(e);
+  game.drag=true;
+  game.dragStartX=p.x;
+  game.playerStartX=game.player.x;
+  canvas.setPointerCapture(e.pointerId);
 });
 canvas.addEventListener("pointermove",e=>{
   if(!game||!game.drag||game.paused||game.over) return;
-  const p=pointerPos(e);game.player.x=p.x;game.player.y=p.y;
+  const p=pointerPos(e);
+  const dx=p.x-game.dragStartX;
+  game.player.x=Math.max(22,Math.min(W-22,game.playerStartX+dx));
 });
 canvas.addEventListener("pointerup",e=>{if(game) game.drag=false;});
 canvas.addEventListener("pointercancel",e=>{if(game) game.drag=false;});
