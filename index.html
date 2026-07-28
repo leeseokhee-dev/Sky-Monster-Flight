@@ -727,29 +727,78 @@ function weeklyQuestHtml(key){
   const def=WEEKLY_QUEST_DEFS[key];
   return questCard(def,saveData.weeklyQuests[def.field]||0,!!saveData.weeklyQuests.claimed[key],`claimWeeklyQuest('${key}')`);
 }
+let questExpAnimationToken=0;
+function setLobbyExpVisual(level,exp,animate=true){
+  const bar=$("lobbyExpBar");
+  const value=$("lobbyExpValue");
+  const levelText=$("lobbyLevelHud");
+  if(!bar||!value||!levelText) return;
+  renderRankBadge($("lobbyRankHud"),level);
+  levelText.textContent=level>=MAX_LEVEL?"Lv.300":"Lv."+level;
+  if(level>=MAX_LEVEL){
+    bar.style.transition=animate?"width .55s ease-out":"none";
+    bar.style.width="100%";
+    value.textContent="MAX[100.000%]";
+    return;
+  }
+  const needed=EXP_TABLE[level].needed;
+  bar.style.transition=animate?"width .55s ease-out":"none";
+  bar.style.width=Math.min(100,exp/needed*100)+"%";
+  value.textContent=`${format(exp)}/${format(needed)}[${expPercent(exp,needed,level)}]`;
+}
+function waitQuestExp(ms){return new Promise(resolve=>setTimeout(resolve,ms));}
+async function animateQuestExpGain(beforeLevel,beforeExp,afterLevel,afterExp,amount){
+  if(!amount||!$("lobbyExpBar")) return;
+  const token=++questExpAnimationToken;
+  let level=beforeLevel;
+  let exp=beforeExp;
+  setLobbyExpVisual(level,exp,false);
+  await waitQuestExp(40);
+  while(level<afterLevel&&level<MAX_LEVEL){
+    if(token!==questExpAnimationToken) return;
+    const needed=EXP_TABLE[level].needed;
+    setLobbyExpVisual(level,needed,true);
+    await waitQuestExp(600);
+    if(token!==questExpAnimationToken) return;
+    level++;
+    exp=0;
+    setLobbyExpVisual(level,0,false);
+    SFX.levelup();
+    await waitQuestExp(90);
+  }
+  if(token!==questExpAnimationToken) return;
+  setLobbyExpVisual(afterLevel,afterExp,true);
+  await waitQuestExp(620);
+  if(token===questExpAnimationToken) refreshLobby();
+}
 function grantQuestReward(reward){
+  const beforeLevel=saveData.account.level;
+  const beforeExp=saveData.account.exp;
   saveData.account.coins+=reward.coins||0;
   saveData.account.gems+=reward.gems||0;
-  const expResult=addSharedExp(reward.exp||0);
+  const gainedExp=reward.exp||0;
+  const expResult=addSharedExp(gainedExp);
+  const afterLevel=saveData.account.level;
+  const afterExp=saveData.account.exp;
   if(expResult.levelUps>0){
-    SFX.levelup();
     queueLevelUpNotices(expResult.before,expResult.after);
     if(expResult.after>=MAX_LEVEL&&expResult.before<MAX_LEVEL) startMaxLevelFireworks();
   }
+  requestAnimationFrame(()=>animateQuestExpGain(beforeLevel,beforeExp,afterLevel,afterExp,gainedExp));
 }
 function claimQuest(key){
   const def=QUEST_DEFS[key];
   if(!def || saveData.quests.claimed[key] || questValue(key)<def.target) return;
   saveData.quests.claimed[key]=true;
   grantQuestReward(def.reward);
-  saveGame();refreshLobby();renderQuestPanel();
+  saveGame();renderQuestPanel();
 }
 function claimRepeatQuest(key){
   const def=REPEAT_QUEST_DEFS[key];
   if(!def || (saveData.repeatQuests[key]||0)<def.target) return;
   saveData.repeatQuests[key]-=def.target;
   grantQuestReward(scaledQuestReward(def));
-  saveGame();refreshLobby();renderQuestPanel();
+  saveGame();renderQuestPanel();
 }
 function claimDailyQuest(key){
   ensureDailyQuests();
@@ -757,7 +806,7 @@ function claimDailyQuest(key){
   if(!def || saveData.dailyQuests.claimed[key] || (saveData.dailyQuests[def.field]||0)<def.target) return;
   saveData.dailyQuests.claimed[key]=true;
   grantQuestReward(scaledQuestReward(def));
-  saveGame();refreshLobby();renderQuestPanel();
+  saveGame();renderQuestPanel();
 }
 function claimWeeklyQuest(key){
   ensureWeeklyQuests();
@@ -765,7 +814,7 @@ function claimWeeklyQuest(key){
   if(!def || saveData.weeklyQuests.claimed[key] || (saveData.weeklyQuests[def.field]||0)<def.target) return;
   saveData.weeklyQuests.claimed[key]=true;
   grantQuestReward(scaledQuestReward(def));
-  saveGame();refreshLobby();renderQuestPanel();
+  saveGame();renderQuestPanel();
 }
 $("questsBtn").onclick=renderQuestPanel;
 
