@@ -1,0 +1,1495 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
+<title>Sky Monster Flight - Boss Balance HUD</title>
+<style>
+  :root{
+    --bg:#071426;
+    --panel:#102541;
+    --panel2:#17375e;
+    --text:#f4f8ff;
+    --muted:#a9bdd7;
+    --accent:#62d7ff;
+    --accent2:#8effb3;
+    --danger:#ff6b81;
+    --gold:#ffd76a;
+  }
+  *{box-sizing:border-box}
+  html,body{margin:0;width:100%;height:100%;overflow:hidden;background:var(--bg);color:var(--text);font-family:system-ui,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+  button,input{font:inherit}
+  button{border:0;border-radius:14px;padding:12px 16px;font-weight:800;cursor:pointer}
+  .screen{position:fixed;inset:0;display:none;align-items:center;justify-content:center;padding:18px;background:
+    radial-gradient(circle at 50% 0%,#174b78 0%,#0b1f36 38%,#071426 100%)}
+  .screen.active{display:flex}
+  .card{width:min(560px,100%);max-height:92vh;overflow:auto;background:rgba(16,37,65,.96);border:1px solid rgba(255,255,255,.1);border-radius:24px;padding:22px;box-shadow:0 22px 70px rgba(0,0,0,.35)}
+  h1,h2,h3,p{margin-top:0}
+  h1{font-size:clamp(28px,7vw,48px);margin-bottom:8px}
+  h2{font-size:26px}
+  .sub{color:var(--muted);line-height:1.55}
+  .brand{color:var(--accent);letter-spacing:.04em}
+  .row{display:flex;gap:10px;align-items:center;flex-wrap:wrap}
+  .stack{display:grid;gap:12px}
+  .primary{background:linear-gradient(135deg,var(--accent),#4f8cff);color:#061524}
+  .secondary{background:#244b75;color:white}
+  .danger{background:var(--danger);color:white}
+  .ghost{background:rgba(255,255,255,.08);color:white}
+  input{width:100%;border:1px solid rgba(255,255,255,.15);background:#091a2e;color:white;border-radius:14px;padding:14px 16px;outline:none}
+  input:focus{border-color:var(--accent)}
+  .statgrid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px}
+  .stat{background:rgba(255,255,255,.06);padding:13px;border-radius:16px}
+  .stat b{display:block;font-size:20px;margin-top:4px}
+  .pill{padding:7px 10px;border-radius:999px;background:rgba(255,255,255,.08);font-size:13px;color:var(--muted)}
+  .quest{background:rgba(255,255,255,.055);padding:13px;border-radius:16px;border:1px solid rgba(255,255,255,.07)}
+  .panelHeader{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:12px;position:sticky;top:-16px;z-index:4;padding:12px 0 8px;background:linear-gradient(180deg,rgba(7,24,43,1) 72%,rgba(7,24,43,0))}
+  .panelHeader h3{margin:0;font-size:20px}
+  .panelClose{display:grid;place-items:center;width:36px;height:36px;padding:0;border-radius:11px;background:rgba(255,255,255,.09);border:1px solid rgba(255,255,255,.14);color:#fff;font-size:21px;line-height:1}
+  .questTop{display:flex;align-items:flex-start;justify-content:space-between;gap:10px}
+  .questTitle{font-size:14px;font-weight:900}.questProgress{font-size:11px;color:#c8d7ea;white-space:nowrap}
+  .questRewardRow{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-top:10px}
+  .questReward{display:flex;align-items:center;gap:6px;font-size:11px;color:#ffe28a;font-weight:800}
+  .claimBtn{padding:7px 10px;border-radius:9px;background:linear-gradient(180deg,#ffe26f,#f4a928);color:#2e1b00;font-size:11px;font-weight:1000}
+  .claimBtn[disabled]{background:rgba(255,255,255,.08);color:#7e91a8;cursor:default}
+  .quest.done{border-color:rgba(142,255,179,.32);box-shadow:inset 0 0 18px rgba(48,190,105,.06)}
+  .quest.claimed{opacity:.72}.quest.claimed .bar>i{background:linear-gradient(90deg,#71839a,#9fb0c3)}
+  .bar{height:11px;background:#081522;border-radius:999px;overflow:hidden}
+  .bar>i{display:block;height:100%;width:0;background:linear-gradient(90deg,var(--accent),var(--accent2))}
+  .plane-preview{display:grid;place-items:center;height:130px;border-radius:18px;background:linear-gradient(#12355d,#0b2037);font-size:70px}
+  .petPanel{display:grid;grid-template-columns:1fr 1fr;gap:9px}
+  .petCard{display:grid;grid-template-columns:34px 1fr;gap:8px;align-items:center;padding:9px 10px;border-radius:13px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08)}
+  .petPlaneIcon{font-size:24px;text-align:center}
+  .petInfo{min-width:0}.petInfo b{display:block;font-size:12px}.petInfo span{font-size:10px;color:var(--muted)}
+  .petMiniBar{height:5px;margin-top:4px;background:#07101b;border-radius:999px;overflow:hidden}.petMiniBar i{display:block;height:100%;background:linear-gradient(90deg,#ffdc69,#ff8b46)}
+  .profile-list{display:grid;gap:10px}
+  .profile-slot{display:grid;grid-template-columns:46px 1fr auto;align-items:center;gap:12px;padding:13px;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.08);border-radius:16px}
+  .profile-slot.empty{border-style:dashed;color:var(--muted)}
+  .slot-number{display:grid;place-items:center;width:42px;height:42px;border-radius:13px;background:#0a1b30;font-weight:900;color:var(--accent)}
+  .slot-info b{display:block;font-size:17px}
+  .slot-info span{font-size:13px;color:var(--muted)}
+  .slot-actions{display:flex;gap:6px}
+  .slot-actions button{padding:8px 10px;border-radius:10px;font-size:12px}
+  #gameScreen{padding:0;background:#05101f}
+  #gameWrap{position:relative;width:100%;height:100%;overflow:hidden}
+  #gameCanvas{position:absolute;inset:0;width:100%;height:100%;display:block;background:#071426;touch-action:none}
+  #hud{position:absolute;inset:0;pointer-events:none}
+  .hudTop{display:none}
+  .hudBox{background:rgba(2,10,20,.68);backdrop-filter:blur(6px);padding:8px 10px;border-radius:12px;font-size:13px;min-width:94px}
+  .hudBox b{font-size:16px}
+  .playerStatusHud{width:min(620px,calc(100vw - 12px));height:76px;min-width:0;background:rgba(2,10,20,.92);padding:5px 7px 6px;border:1px solid rgba(255,255,255,.17);border-radius:10px;overflow:hidden;box-shadow:0 4px 18px rgba(0,0,0,.35)}
+  .hudStatsRow{height:18px;display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:4px;margin:0 1px 3px;padding:0 3px;border-bottom:1px solid rgba(255,255,255,.09);font-size:9px;color:#aebfd5;line-height:17px}
+  .hudStat{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:center}
+  .hudStat b{color:#fff;font-size:10px;margin-left:3px}
+
+  #expHud{position:absolute;z-index:20;left:50%;transform:translateX(-50%);top:max(8px,env(safe-area-inset-top))}
+  .playerIdentity{display:grid;grid-template-columns:minmax(0,1fr) auto;gap:8px;align-items:center;height:25px;margin:0 2px 3px}
+  .identityMain{display:flex;align-items:center;gap:7px;min-width:0}
+  .pilotName{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-size:13px;font-weight:900;color:#fff}
+  .rankBadge{flex:0 0 28px;display:grid;place-items:center;width:28px;height:28px;padding:0;border:0;background:transparent;box-shadow:none}
+  .rankIcon{position:relative;display:block;width:24px;height:24px;clip-path:polygon(50% 0,88% 20%,88% 68%,50% 100%,12% 68%,12% 20%);background:linear-gradient(160deg,#d7e0eb,#64768d);box-shadow:inset 0 1px rgba(255,255,255,.75),0 2px 5px rgba(0,0,0,.35)}
+  .rankIcon::before{content:"";position:absolute;inset:5px;clip-path:polygon(50% 0,62% 34%,100% 38%,70% 60%,80% 100%,50% 76%,20% 100%,30% 60%,0 38%,38% 34%);background:rgba(255,255,255,.78);filter:drop-shadow(0 1px 1px rgba(0,0,0,.35))}
+  .rankBadge[data-tier="2"] .rankIcon{background:linear-gradient(160deg,#bfe8ff,#3489bd)}
+  .rankBadge[data-tier="3"] .rankIcon{background:linear-gradient(160deg,#bfffd5,#2caf70)}
+  .rankBadge[data-tier="4"] .rankIcon{background:linear-gradient(160deg,#fff1a8,#d49520)}
+  .rankBadge[data-tier="5"] .rankIcon{background:linear-gradient(160deg,#ffc4ee,#b9439b)}
+  .rankBadge[data-tier="6"] .rankIcon{background:linear-gradient(160deg,#ded0ff,#7957d8)}
+  .rankBadge[data-tier="7"] .rankIcon{background:linear-gradient(160deg,#ffcfaa,#d45b31)}
+  .rankBadge[data-tier="8"] .rankIcon{background:linear-gradient(160deg,#fff,#54d7ff);box-shadow:0 0 7px rgba(98,215,255,.8)}
+  .rankBadge[data-tier="9"] .rankIcon{background:conic-gradient(#fff27b,#ff7ad9,#79e8ff,#a4ff9c,#fff27b);box-shadow:0 0 9px rgba(255,255,255,.85)}
+  .levelText{flex:0 0 auto;font-size:13px;font-weight:1000;color:#8effb3;white-space:nowrap}
+  .pendingText{min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;text-align:right;color:#c9daf0;font-size:10px}
+  .expGaugeRow{display:flex;align-items:stretch;width:100%;height:14px;min-width:0}
+  .expLabel{display:grid;place-items:center;flex:0 0 46px;background:linear-gradient(180deg,#ffe06d,#efa928);border:1px solid #fff0a7;border-right:0;border-radius:7px 0 0 7px;color:#352300;font-size:9px;font-weight:1000;letter-spacing:.08em;text-shadow:0 1px rgba(255,255,255,.45);box-shadow:inset 0 -2px rgba(104,62,0,.22)}
+  .expTrack{position:relative;flex:1 1 auto;min-width:0;overflow:hidden;background:linear-gradient(180deg,#07101b,#111c2a);border:1px solid rgba(255,255,255,.28);border-radius:0 7px 7px 0;box-shadow:inset 0 2px 4px rgba(0,0,0,.65)}
+  .expTrack::after{content:"";position:absolute;z-index:2;inset:0;pointer-events:none;background:repeating-linear-gradient(90deg,transparent 0,transparent calc(10% - 1px),rgba(255,255,255,.45) calc(10% - 1px),rgba(255,255,255,.45) 10%)}
+  .expFill{position:absolute;z-index:1;inset:0 auto 0 0;width:0;background:linear-gradient(180deg,#82f8ff 0%,#21c9ff 48%,#168eea 52%,#1b69c5 100%);transition:width .9s linear;will-change:width;box-shadow:inset 0 1px rgba(255,255,255,.75),inset 0 -2px rgba(0,38,106,.35)}
+  .expFill::after{content:"";position:absolute;left:0;right:0;top:1px;height:35%;background:rgba(255,255,255,.28)}
+  .expValue{position:absolute;z-index:3;inset:0;display:grid;place-items:center;padding:0 4px;color:white;font-size:12px;font-weight:900;line-height:1;text-shadow:-1px -1px 0 #06376e,1px -1px 0 #06376e,-1px 1px 0 #06376e,1px 1px 0 #06376e;white-space:nowrap;pointer-events:none}
+  .lobbyStatusWrap{position:fixed;z-index:20;left:50%;transform:translateX(-50%);top:max(8px,env(safe-area-inset-top));display:grid;place-items:center;width:100%;pointer-events:none}
+  #lobbyStatusHud{position:relative;pointer-events:auto}
+  #pauseBtn,#soundBtn{pointer-events:auto;position:absolute;z-index:21;top:max(62px,calc(env(safe-area-inset-top) + 62px));width:44px;height:44px;padding:0;background:rgba(2,10,20,.82);color:white;border:1px solid rgba(255,255,255,.16)}
+  #pauseBtn{right:max(8px,env(safe-area-inset-right))}
+  #soundBtn{right:58px}
+  @media(max-width:340px){.playerStatusHud{width:calc(100vw - 8px);height:74px;padding:4px 5px}.expGaugeRow{height:14px}.expLabel{flex-basis:40px}.pilotName,.levelText{font-size:11px}.rankBadge{width:26px;height:26px;flex-basis:26px}.rankIcon{width:22px;height:22px}.pendingText{font-size:9px}}
+  #bossBarWrap{display:none;position:absolute;left:12px;right:12px;top:92px;background:rgba(2,10,20,.8);padding:8px 10px;border-radius:13px}
+  #bossBarWrap.show{display:block}
+  #overlay{position:absolute;z-index:15;left:0;right:0;bottom:0;top:max(62px,calc(env(safe-area-inset-top) + 62px));display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.63);padding:20px}
+  #overlay.show{display:flex}
+  .overlayCard{width:min(380px,100%);max-height:calc(100vh - 86px);overflow:auto;background:#102541;border-radius:22px;padding:20px;text-align:center}
+  .tiny{font-size:12px;color:var(--muted)}
+  .resultLine{display:flex;justify-content:space-between;gap:16px;padding:8px 0;border-bottom:1px solid rgba(255,255,255,.08)}
+  .levelup{color:var(--gold);font-weight:900;font-size:22px}
+
+  #levelUpNotice{position:absolute;z-index:60;left:50%;top:46%;transform:translate(-50%,-50%) scale(.86);width:min(92vw,520px);text-align:center;pointer-events:none;opacity:0;color:#ffd52f;font-weight:1000;text-shadow:0 3px 0 #9c5900,0 6px 12px rgba(0,0,0,.85),-2px 0 #5a3500,2px 0 #5a3500;transition:opacity .18s ease,transform .18s ease}
+  #levelUpNotice.show{opacity:1;transform:translate(-50%,-50%) scale(1)}
+  #levelUpNotice .noticeTitle{display:block;font-size:clamp(22px,6vw,40px);line-height:1.15}
+  #levelUpNotice .noticeLevel{display:block;margin-top:5px;font-size:clamp(28px,8vw,52px);line-height:1}
+  #fireworksCanvas{position:absolute;z-index:55;inset:0;width:100%;height:100%;pointer-events:none;display:none}
+  #fireworksCanvas.show{display:block}
+  @media (max-width:480px){
+    .card{padding:17px;border-radius:19px}
+    .statgrid{grid-template-columns:1fr 1fr}
+  }
+
+  /* 출시형 메인 로비 */
+  #lobbyScreen{padding:0!important;align-items:stretch;justify-content:stretch;background:
+    radial-gradient(circle at 50% 28%,rgba(78,167,255,.34),transparent 28%),
+    linear-gradient(180deg,#061a31 0%,#0c3358 42%,#071426 100%)}
+  .releaseLobby{position:relative;width:100%;height:100%;overflow:hidden;isolation:isolate}
+  .releaseLobby::before{content:"";position:absolute;inset:0;z-index:-2;background:
+    linear-gradient(115deg,transparent 0 42%,rgba(255,255,255,.035) 42% 43%,transparent 43% 58%,rgba(255,255,255,.025) 58% 59%,transparent 59%),
+    radial-gradient(circle at 16% 23%,rgba(98,215,255,.14),transparent 22%),
+    radial-gradient(circle at 84% 34%,rgba(142,255,179,.08),transparent 20%)}
+  .releaseLobby::after{content:"";position:absolute;left:-10%;right:-10%;bottom:-16vh;height:44vh;z-index:-1;background:radial-gradient(ellipse at center,#164d78 0%,#0a2a48 45%,transparent 70%);filter:blur(2px)}
+  .lobbyTopBar{position:absolute;z-index:30;left:12px;right:12px;top:max(88px,calc(env(safe-area-inset-top) + 88px));display:grid;grid-template-columns:minmax(0,1fr) auto;gap:10px;align-items:center}
+  .currencyBar{display:flex;justify-content:flex-end;gap:7px;flex-wrap:wrap}
+  .currencyChip{display:flex;align-items:center;gap:6px;min-width:92px;height:34px;padding:0 10px;border:1px solid rgba(255,255,255,.16);border-radius:10px;background:linear-gradient(180deg,rgba(15,42,71,.96),rgba(5,20,38,.96));box-shadow:inset 0 1px rgba(255,255,255,.08),0 5px 16px rgba(0,0,0,.25);font-size:11px;color:#b8cae1}
+  .currencyChip strong{margin-left:auto;color:#fff;font-size:14px}
+  .currencyIcon{font-size:16px}
+  .lobbyLogo{position:absolute;z-index:5;left:18px;top:max(144px,calc(env(safe-area-inset-top) + 144px));line-height:.82;text-transform:uppercase;filter:drop-shadow(0 5px 10px rgba(0,0,0,.55))}
+  .lobbyLogo .sky{display:block;font-size:clamp(15px,3.4vw,24px);font-weight:1000;letter-spacing:.28em;color:#9ee9ff}
+  .lobbyLogo .monster{display:block;font-size:clamp(32px,8vw,64px);font-weight:1000;letter-spacing:-.07em;color:white;text-shadow:0 3px 0 #2672af,0 6px 18px rgba(0,0,0,.45)}
+  .lobbyLogo .flight{display:block;margin-left:42%;font-size:clamp(18px,4.3vw,34px);font-weight:1000;font-style:italic;color:#ffd95e;text-shadow:0 2px 0 #9f5f00}
+  .seasonTag{display:inline-flex;margin-top:12px;padding:6px 10px;border-radius:7px;background:linear-gradient(90deg,#2bc5ff,#4775ff);font-size:10px;font-weight:900;letter-spacing:.12em;box-shadow:0 5px 15px rgba(25,103,210,.35)}
+  .hangarStage{position:absolute;left:50%;top:50%;transform:translate(-50%,-48%);width:min(72vw,520px);height:min(46vh,420px);display:grid;place-items:center}
+  .hangarGlow{position:absolute;width:72%;aspect-ratio:1;border-radius:50%;background:radial-gradient(circle,rgba(116,217,255,.34),rgba(58,133,204,.08) 48%,transparent 68%);animation:lobbyPulse 2.8s ease-in-out infinite}
+  .hangarRing{position:absolute;width:90%;height:34%;bottom:5%;border:2px solid rgba(107,214,255,.26);border-radius:50%;box-shadow:0 0 28px rgba(64,182,255,.22),inset 0 0 28px rgba(64,182,255,.12);transform:perspective(300px) rotateX(62deg)}
+  .mainAircraft{position:relative;z-index:3;font-size:clamp(96px,25vw,190px);filter:drop-shadow(0 18px 20px rgba(0,0,0,.48)) drop-shadow(0 0 16px rgba(90,206,255,.3));animation:lobbyFloat 3s ease-in-out infinite}
+  .mainAircraft::after{content:"";position:absolute;left:50%;top:82%;width:18px;height:90px;transform:translateX(-50%);background:linear-gradient(rgba(126,230,255,.8),transparent);filter:blur(6px)}
+  .petWing{position:absolute;z-index:4;top:53%;font-size:clamp(42px,9vw,72px);filter:drop-shadow(0 10px 10px rgba(0,0,0,.4));animation:lobbyFloat 3s ease-in-out infinite}
+  .petWing.left{left:3%;animation-delay:-.5s}.petWing.right{right:3%;animation-delay:-1s;transform:scaleX(-1)}
+  .petLevelTag{position:absolute;top:100%;left:50%;transform:translateX(-50%);white-space:nowrap;padding:4px 7px;border-radius:999px;background:rgba(2,12,24,.78);border:1px solid rgba(255,255,255,.15);font-size:12px;font-weight:900}
+  @keyframes lobbyFloat{50%{transform:translateY(-9px)}}
+  @keyframes lobbyPulse{50%{transform:scale(1.08);opacity:.75}}
+  .lobbyLeftRail{position:absolute;z-index:20;left:14px;bottom:max(98px,calc(env(safe-area-inset-bottom) + 98px));display:grid;gap:8px;width:min(170px,34vw)}
+  .missionCard{padding:10px 11px;border-radius:12px;border:1px solid rgba(255,255,255,.13);background:linear-gradient(135deg,rgba(13,43,74,.94),rgba(7,22,42,.94));box-shadow:0 8px 24px rgba(0,0,0,.25)}
+  .missionCard .eyebrow{font-size:9px;color:#77dfff;font-weight:900;letter-spacing:.1em}.missionCard b{display:block;margin-top:3px;font-size:12px}.missionCard span{font-size:10px;color:#aabbd1}
+  .lobbyRightRail{position:absolute;z-index:20;right:14px;bottom:max(104px,calc(env(safe-area-inset-bottom) + 104px));display:grid;gap:8px;width:min(190px,38vw)}
+  .launchPanel{padding:10px;border-radius:16px;border:1px solid rgba(255,224,105,.35);background:linear-gradient(180deg,rgba(28,49,72,.96),rgba(8,22,39,.96));box-shadow:0 12px 32px rgba(0,0,0,.36)}
+  .launchMeta{display:flex;justify-content:space-between;margin-bottom:7px;font-size:10px;color:#b9c8d9}.launchMeta b{color:#fff}
+  #startBtn.releaseStart{position:relative;width:100%;overflow:hidden;border-radius:13px;padding:16px 12px;background:linear-gradient(180deg,#ffe277 0%,#ffb52e 48%,#ef861d 52%,#d45d12 100%);color:#281400;font-size:20px;font-weight:1000;letter-spacing:.08em;text-shadow:0 1px rgba(255,255,255,.55);box-shadow:inset 0 2px rgba(255,255,255,.65),inset 0 -3px rgba(113,44,0,.3),0 0 20px rgba(255,176,41,.3)}
+  #startBtn.releaseStart::before{content:"";position:absolute;inset:2px;border:1px solid rgba(255,255,255,.42);border-radius:11px}
+  #startBtn.releaseStart:active{transform:translateY(2px)}
+  .bottomDock{position:absolute;z-index:25;left:0;right:0;bottom:0;padding:8px max(10px,env(safe-area-inset-right)) max(8px,env(safe-area-inset-bottom)) max(10px,env(safe-area-inset-left));display:grid;grid-template-columns:repeat(5,1fr);gap:6px;background:linear-gradient(180deg,rgba(3,13,25,.18),rgba(3,13,25,.95) 28%);border-top:1px solid rgba(255,255,255,.09)}
+  .dockBtn{height:58px;padding:5px 3px;border-radius:11px;background:linear-gradient(180deg,rgba(31,68,103,.9),rgba(10,30,52,.95));border:1px solid rgba(255,255,255,.1);color:#dce9f8;font-size:9px;font-weight:800;box-shadow:inset 0 1px rgba(255,255,255,.08)}
+  .dockBtn .ico{display:block;margin-bottom:2px;font-size:22px}.dockBtn.primaryDock{border-color:rgba(98,215,255,.42);box-shadow:inset 0 1px rgba(255,255,255,.12),0 0 15px rgba(40,170,255,.15)}
+  #panel.releasePanel{position:absolute;z-index:50;left:50%;bottom:max(76px,calc(env(safe-area-inset-bottom) + 76px));transform:translateX(-50%);width:min(500px,calc(100vw - 24px));max-height:min(56vh,520px);overflow:auto;padding:16px;border-radius:18px;background:rgba(7,24,43,.97);border:1px solid rgba(255,255,255,.16);box-shadow:0 18px 60px rgba(0,0,0,.55);backdrop-filter:blur(12px)}
+  #panel.releasePanel:empty{display:none}
+  .lobbyVersion{position:absolute;right:10px;top:max(180px,calc(env(safe-area-inset-top) + 180px));font-size:9px;color:rgba(255,255,255,.4)}
+  @media(max-width:620px){
+    .lobbyTopBar{grid-template-columns:1fr;top:max(86px,calc(env(safe-area-inset-top) + 86px))}.currencyBar{justify-content:flex-end}.currencyChip{min-width:82px;height:30px;padding:0 8px}.lobbyLogo{top:max(153px,calc(env(safe-area-inset-top) + 153px))}.seasonTag{margin-top:8px}.hangarStage{top:53%;height:38vh}.lobbyLeftRail{bottom:max(92px,calc(env(safe-area-inset-bottom) + 92px));width:34vw}.lobbyRightRail{bottom:max(94px,calc(env(safe-area-inset-bottom) + 94px));width:42vw}.missionCard{padding:8px}.missionCard span{display:none}.launchPanel{padding:8px}#startBtn.releaseStart{font-size:17px;padding:14px 8px}.bottomDock{gap:4px}.dockBtn{height:55px}.dockBtn .ico{font-size:20px}}
+  @media(max-height:650px){.lobbyLogo{display:none}.hangarStage{top:47%;height:42vh}.lobbyTopBar{top:max(82px,calc(env(safe-area-inset-top) + 82px))}.missionCard:nth-child(2){display:none}}
+
+</style>
+</head>
+<body>
+
+<section id="profileScreen" class="screen">
+  <div class="card stack">
+    <div>
+      <h1><span class="brand">Sky Monster</span><br>Flight</h1>
+      <p class="sub">플레이할 파일럿을 선택하세요. 한 기기에서 최대 5개의 파일럿을 독립적으로 육성할 수 있습니다.</p>
+    </div>
+    <div id="profileList" class="profile-list"></div>
+    <p class="tiny">각 파일럿의 레벨, 경험치, 재화, 퀘스트와 비행 기록은 서로 분리되어 저장됩니다.</p>
+  </div>
+</section>
+
+<section id="setupScreen" class="screen">
+  <div class="card">
+    <h1><span class="brand">새 파일럿</span><br>등록</h1>
+    <p id="creatingSlotText" class="sub"></p>
+    <div class="stack">
+      <input id="nicknameInput" maxlength="12" placeholder="닉네임 2~12자" />
+      <button id="createAccountBtn" class="primary">파일럿 등록</button>
+      <button id="cancelCreateBtn" class="ghost">파일럿 선택으로 돌아가기</button>
+      <p class="tiny">한글, 영문, 숫자를 사용할 수 있습니다.</p>
+    </div>
+  </div>
+</section>
+
+<section id="lobbyScreen" class="screen">
+  <div class="releaseLobby">
+    <div class="lobbyStatusWrap">
+      <div id="lobbyStatusHud" class="playerStatusHud">
+        <div class="playerIdentity">
+          <div class="identityMain">
+            <span id="lobbyNicknameHud" class="pilotName">파일럿</span>
+            <span id="lobbyRankHud" class="rankBadge" data-tier="1"><span class="rankIcon"></span></span>
+            <span id="lobbyLevelHud" class="levelText">Lv.1</span>
+          </div>
+          <span class="pendingText">COMMANDER PROFILE</span>
+        </div>
+        <div class="expGaugeRow">
+          <div class="expLabel">EXP</div>
+          <div class="expTrack"><i id="lobbyExpBar" class="expFill"></i><span id="lobbyExpValue" class="expValue">0/10[0.00%]</span></div>
+        </div>
+      </div>
+    </div>
+
+    <div class="lobbyTopBar">
+      <div></div>
+      <div class="currencyBar">
+        <div class="currencyChip"><span class="currencyIcon">🪙</span><span>COIN</span><strong id="coinsText">0</strong></div>
+        <div class="currencyChip"><span class="currencyIcon">💎</span><span>GEM</span><strong id="gemsText">0</strong></div>
+      </div>
+    </div>
+
+    <div class="lobbyLogo">
+      <span class="sky">Sky</span><span class="monster">Monster</span><span class="flight">Flight</span>
+      <span class="seasonTag">SEASON 1 · FIRST FLIGHT</span>
+    </div>
+    <div class="lobbyVersion">Ver. 1.0.0</div>
+
+    <div class="hangarStage" aria-label="보유 기체와 펫 편대">
+      <div class="hangarGlow"></div><div class="hangarRing"></div>
+      <div class="petWing left">🛩️<span class="petLevelTag">LEFT <b id="leftPetLevel">Lv.1</b></span></div>
+      <div class="mainAircraft">✈️</div>
+      <div class="petWing right">🛩️<span class="petLevelTag">RIGHT <b id="rightPetLevel">Lv.1</b></span></div>
+      <span id="leftPetExpText" style="display:none">0 / 12</span><i id="leftPetBar" style="display:none"></i>
+      <span id="rightPetExpText" style="display:none">0 / 12</span><i id="rightPetBar" style="display:none"></i>
+    </div>
+
+    <div class="lobbyLeftRail">
+      <div class="missionCard"><span class="eyebrow">BEST RECORD</span><b id="bestDistanceText">0m</b><span>최고 비행 거리</span></div>
+      <div class="missionCard"><span class="eyebrow">BOSS HUNT</span><b><span id="bossKillsText">0</span> KILLS</b><span>누적 보스 격추</span></div>
+    </div>
+
+    <div class="lobbyRightRail">
+      <div class="launchPanel">
+        <div class="launchMeta"><span>NORMAL FLIGHT</span><b>READY</b></div>
+        <button id="startBtn" class="releaseStart">출격</button>
+      </div>
+    </div>
+
+    <div id="panel" class="stack releasePanel"></div>
+
+    <div class="bottomDock">
+      <button id="questsBtn" class="dockBtn primaryDock"><span class="ico">📋</span>퀘스트</button>
+      <button id="recordsBtn" class="dockBtn"><span class="ico">🏆</span>기록</button>
+      <button class="dockBtn" onclick="openInfoPanel('격납고','기체 강화와 외형 변경 기능이 준비될 예정입니다.')"><span class="ico">🛫</span>격납고</button>
+      <button id="switchProfileBtn" class="dockBtn"><span class="ico">👤</span>파일럿</button>
+      <button id="resetBtn" class="dockBtn"><span class="ico">⚙️</span>설정</button>
+    </div>
+  </div>
+</section>
+
+<section id="gameScreen" class="screen">
+  <div id="gameWrap">
+    <canvas id="gameCanvas"></canvas>
+    <div id="hud">
+      <div id="bossBarWrap">
+        <div class="row" style="justify-content:space-between;align-items:center;gap:8px">
+          <b id="bossLevelText">BOSS Lv.1</b><span id="bossHpText">0 / 0</span>
+        </div>
+        <div class="bar"><i id="bossBar"></i></div>
+      </div>
+
+      <div id="expHud" class="playerStatusHud">
+        <div class="hudStatsRow">
+          <span class="hudStat">거리<b id="distanceHud">0m</b></span>
+          <span class="hudStat">처치<b id="killScoreHud">0</b></span>
+          <span class="hudStat">총점<b id="totalScoreHud">0</b></span>
+          <span class="hudStat">속도<b id="speedHud">0km/h</b></span>
+        </div>
+        <div class="playerIdentity">
+          <div class="identityMain">
+            <span id="previewNameHud" class="pilotName">파일럿</span>
+            <span id="previewRankHud" class="rankBadge" data-tier="1"><span class="rankIcon"></span></span>
+            <span id="previewLevelHud" class="levelText">Lv.1</span>
+          </div>
+          <span id="pendingExpHud" class="pendingText">이번 비행 +0 EXP</span>
+        </div>
+        <div class="expGaugeRow">
+          <div class="expLabel">EXP</div>
+          <div class="expTrack">
+            <i id="previewExpBar" class="expFill"></i>
+            <span id="expValueHud" class="expValue">0/10[0.00%]</span>
+          </div>
+        </div>
+      </div>
+      <button id="soundBtn" aria-label="소리 켜기 또는 끄기">🔊</button>
+      <button id="pauseBtn">Ⅱ</button>
+    </div>
+
+    <canvas id="fireworksCanvas"></canvas>
+    <div id="levelUpNotice" aria-live="polite"><span class="noticeTitle">레벨이 올랐습니다!</span><span class="noticeLevel">LEVEL 2</span></div>
+    <div id="overlay">
+      <div class="overlayCard" id="overlayContent"></div>
+    </div>
+  </div>
+</section>
+
+<script>
+"use strict";
+
+const SAVE_KEY = "skyMonsterFlightProfiles_v2";
+const LEGACY_SAVE_KEY = "skyMonsterFlightSave_v1";
+const MAX_LEVEL = 300;
+const MAX_PROFILES = 5;
+
+const EARLY_NEEDED = {
+  1:10,2:17,3:31,4:50,5:73,6:98,7:130,8:165,9:211,10:287
+};
+const EXP_ANCHOR = {
+  11:671,31:22316,61:218319,100:3152884,101:4729326,199:334626021,200:736177248
+};
+
+window.EXP_TABLE = window.EXP_TABLE || [];
+const EXP_TABLE = window.EXP_TABLE;
+
+(function initExpTable(){
+  EXP_TABLE.length = 0;
+  let cumulative = 0;
+  let lastNeeded = 10;
+  const r11to31 = Math.pow(EXP_ANCHOR[31]/EXP_ANCHOR[11],1/(31-11));
+  const r31to61 = Math.pow(EXP_ANCHOR[61]/EXP_ANCHOR[31],1/(61-31));
+  const r61to100 = Math.pow(EXP_ANCHOR[100]/EXP_ANCHOR[61],1/(100-61));
+  const r101to199 = Math.pow(EXP_ANCHOR[199]/EXP_ANCHOR[101],1/(199-101));
+
+  for(let l=1;l<=MAX_LEVEL+1;l++){
+    let needed=10;
+    if(l<=10) needed=EARLY_NEEDED[l] ?? 10;
+    else if(l<=31) needed=Math.round(EXP_ANCHOR[11]*Math.pow(r11to31,l-11));
+    else if(l<=61) needed=Math.round(EXP_ANCHOR[31]*Math.pow(r31to61,l-31));
+    else if(l<=100) needed=Math.round(EXP_ANCHOR[61]*Math.pow(r61to100,l-61));
+    else if(l===101) needed=EXP_ANCHOR[101];
+    else if(l<=199) needed=Math.round(EXP_ANCHOR[101]*Math.pow(r101to199,l-101));
+    else if(l===200) needed=EXP_ANCHOR[200];
+    else{
+      const prev=l-1;
+      const lateExpAnchors={249:62757091756,259:125514183512,269:251028367024,279:502056734048,289:1004113468096,299:2409872323430};
+      if(l>=250) needed=lateExpAnchors[l] || Math.ceil(lastNeeded*1.01);
+      else{
+        let rate=1.04;
+        if(prev>=200&&prev<=208) rate=1.06;
+        else if(prev===209) rate=1.8;
+        else if(prev>=210&&prev<=218) rate=1.04;
+        else if(prev===219) rate=1.8;
+        else if(prev>=220&&prev<=228) rate=1.03;
+        else if(prev===229) rate=1.8;
+        else if(prev>=230&&prev<=238) rate=1.02;
+        else if(prev===239) rate=1.8;
+        else if(prev>=240&&prev<=247) rate=1.01;
+        else if(prev===248) rate=2.0;
+        needed=Math.ceil(lastNeeded*rate);
+      }
+    }
+    EXP_TABLE[l]={needed,totalMin:cumulative};
+    cumulative+=needed;
+    lastNeeded=needed;
+  }
+})();
+
+const defaultProfile = (nickname="") => ({
+  account:{nickname,level:1,exp:0,coins:0,gems:0},
+  flight:{bestDistance:0,bestScore:0,totalFlights:0,totalMonsterKills:0,totalBossKills:0,totalKillScore:0},
+  quests:{firstFlight:false,kill10:0,reach500:false,firstBoss:false,claimed:{firstFlight:false,kill10:false,reach500:false,firstBoss:false}},
+  pets:{left:{level:1,exp:0},right:{level:1,exp:0}}
+});
+const defaultRoot = () => ({selectedSlot:null,profiles:Array(MAX_PROFILES).fill(null)});
+
+let rootData = loadRoot();
+let activeSlot = Number.isInteger(rootData.selectedSlot) ? rootData.selectedSlot : null;
+let saveData = activeSlot!==null && rootData.profiles[activeSlot] ? rootData.profiles[activeSlot] : null;
+let creatingSlot = null;
+
+function normalizeProfile(profile){
+  const d=defaultProfile();
+  return {
+    ...d,...profile,
+    account:{...d.account,...(profile?.account||{})},
+    flight:{...d.flight,...(profile?.flight||{})},
+    quests:{...d.quests,...(profile?.quests||{}),claimed:{...d.quests.claimed,...(profile?.quests?.claimed||{})}},
+    pets:{
+      left:{...d.pets.left,...(profile?.pets?.left||{})},
+      right:{...d.pets.right,...(profile?.pets?.right||{})}
+    }
+  };
+}
+function loadRoot(){
+  try{
+    const raw=localStorage.getItem(SAVE_KEY);
+    if(raw){
+      const parsed=JSON.parse(raw);
+      const profiles=Array(MAX_PROFILES).fill(null);
+      (parsed.profiles||[]).slice(0,MAX_PROFILES).forEach((p,i)=>profiles[i]=p?normalizeProfile(p):null);
+      return {selectedSlot:Number.isInteger(parsed.selectedSlot)?parsed.selectedSlot:null,profiles};
+    }
+    const legacyRaw=localStorage.getItem(LEGACY_SAVE_KEY);
+    if(legacyRaw){
+      const legacy=JSON.parse(legacyRaw);
+      const root=defaultRoot();
+      if(legacy?.account?.nickname){
+        root.profiles[0]=normalizeProfile(legacy);
+        root.selectedSlot=0;
+      }
+      localStorage.setItem(SAVE_KEY,JSON.stringify(root));
+      return root;
+    }
+  }catch(e){ console.warn("저장 데이터 오류",e); }
+  return defaultRoot();
+}
+function saveGame(){
+  if(activeSlot!==null && saveData) rootData.profiles[activeSlot]=saveData;
+  rootData.selectedSlot=activeSlot;
+  localStorage.setItem(SAVE_KEY,JSON.stringify(rootData));
+}
+
+const $ = id => document.getElementById(id);
+const screens = ["profileScreen","setupScreen","lobbyScreen","gameScreen"];
+function showScreen(id){ screens.forEach(s=>$(s).classList.toggle("active",s===id)); }
+function format(n){ return Math.floor(n).toLocaleString("ko-KR"); }
+function expPercent(exp,needed,level){
+  const percent=needed>0?Math.max(0,Math.min(100,exp/needed*100)):100;
+  return percent.toFixed(level>=200?3:2)+"%";
+}
+function getRank(level){
+  const rank=Math.max(1,Math.min(MAX_LEVEL,Math.floor(level)||1));
+  return {number:rank,label:`계급 ${String(rank).padStart(3,"0")}`,tier:Math.min(9,Math.floor((rank-1)/35)+1)};
+}
+function renderRankBadge(element,level){
+  if(!element) return;
+  const rank=getRank(level);
+  element.dataset.tier=String(rank.tier);
+  element.innerHTML='<span class="rankIcon" aria-hidden="true"></span>';
+  element.title=`레벨 ${rank.number} 전용 계급 아이콘`;
+  element.setAttribute("aria-label",element.title);
+}
+
+function renderProfiles(){
+  const list=$("profileList");
+  list.innerHTML=rootData.profiles.map((profile,index)=>{
+    if(!profile){
+      return `<div class="profile-slot empty">
+        <div class="slot-number">${index+1}</div>
+        <div class="slot-info"><b>빈 슬롯</b><span>새 파일럿을 생성할 수 있습니다.</span></div>
+        <div class="slot-actions"><button class="primary" onclick="openCreateProfile(${index})">생성</button></div>
+      </div>`;
+    }
+    const a=profile.account,f=profile.flight;
+    return `<div class="profile-slot">
+      <div class="slot-number">${index+1}</div>
+      <div class="slot-info"><b>${escapeHtml(a.nickname)}</b><span>Lv.${a.level} · 계급 ${String(a.level).padStart(3,"0")} · 최고 ${format(f.bestDistance)}m</span></div>
+      <div class="slot-actions">
+        <button class="primary" onclick="selectProfile(${index})">선택</button>
+        <button class="danger" onclick="deleteProfile(${index})">삭제</button>
+      </div>
+    </div>`;
+  }).join("");
+}
+function escapeHtml(text){
+  return String(text).replace(/[&<>'"]/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;","'":"&#39;",'"':"&quot;"}[c]));
+}
+function openCreateProfile(index){
+  if(index<0||index>=MAX_PROFILES||rootData.profiles[index]) return;
+  creatingSlot=index;
+  $("nicknameInput").value="";
+  $("creatingSlotText").textContent=`${index+1}번 슬롯에 새 파일럿을 생성합니다.`;
+  showScreen("setupScreen");
+  setTimeout(()=>$("nicknameInput").focus(),0);
+}
+function selectProfile(index){
+  const profile=rootData.profiles[index];
+  if(!profile) return;
+  activeSlot=index;
+  saveData=profile;
+  saveGame();
+  refreshLobby();
+  showScreen("lobbyScreen");
+}
+function deleteProfile(index){
+  const profile=rootData.profiles[index];
+  if(!profile) return;
+  if(!confirm(`'${profile.account.nickname}' 파일럿을 삭제할까요?\n레벨과 모든 기록이 영구 삭제됩니다.`)) return;
+  rootData.profiles[index]=null;
+  if(activeSlot===index){activeSlot=null;saveData=null;}
+  rootData.selectedSlot=activeSlot;
+  localStorage.setItem(SAVE_KEY,JSON.stringify(rootData));
+  renderProfiles();
+}
+function openProfileScreen(){
+  if(game) game.running=false;
+  cancelAnimationFrame(raf);
+  activeSlot=null;
+  saveData=null;
+  rootData.selectedSlot=null;
+  localStorage.setItem(SAVE_KEY,JSON.stringify(rootData));
+  renderProfiles();
+  showScreen("profileScreen");
+}
+
+const MAX_PET_LEVEL=30;
+function petExpNeeded(level){ return 8+Math.max(1,level)*4; }
+function petAttack(level){ return 1+Math.floor((Math.max(1,level)-1)/3); }
+function addPetExp(pet,amount){
+  if(!pet||pet.level>=MAX_PET_LEVEL) return;
+  pet.exp+=Math.max(0,Math.floor(amount));
+  while(pet.level<MAX_PET_LEVEL&&pet.exp>=petExpNeeded(pet.level)){pet.exp-=petExpNeeded(pet.level);pet.level++;}
+  if(pet.level>=MAX_PET_LEVEL){pet.level=MAX_PET_LEVEL;pet.exp=0;}
+}
+function renderPetLobby(side){
+  const pet=saveData.pets[side], cap=pet.level>=MAX_PET_LEVEL, need=cap?1:petExpNeeded(pet.level);
+  $(side+"PetLevel").textContent=cap?"Lv.30 MAX":"Lv."+pet.level;
+  $(side+"PetExpText").textContent=cap?"MAX":`${format(pet.exp)} / ${format(need)}`;
+  $(side+"PetBar").style.width=cap?"100%":Math.min(100,pet.exp/need*100)+"%";
+}
+
+function refreshLobby(){
+  if(!saveData) return openProfileScreen();
+  const a=saveData.account, f=saveData.flight;
+  $("lobbyNicknameHud").textContent=a.nickname;
+  renderRankBadge($("lobbyRankHud"),a.level);
+  $("lobbyLevelHud").textContent=a.level>=MAX_LEVEL?"Lv.300":"Lv."+a.level;
+  $("coinsText").textContent=format(a.coins);
+  $("gemsText").textContent=format(a.gems);
+  $("bestDistanceText").textContent=format(f.bestDistance)+"m";
+  $("bossKillsText").textContent=format(f.totalBossKills);
+  renderPetLobby("left");
+  renderPetLobby("right");
+  const lobbyBar=$("lobbyExpBar");
+  lobbyBar.style.transition="none";
+  if(a.level>=MAX_LEVEL){
+    lobbyBar.style.width="100%";
+    $("lobbyExpValue").textContent="MAX[100.000%]";
+  }else{
+    const needed=EXP_TABLE[a.level].needed;
+    lobbyBar.style.width=Math.min(100,a.exp/needed*100)+"%";
+    $("lobbyExpValue").textContent=`${format(a.exp)}/${format(needed)}[${expPercent(a.exp,needed,a.level)}]`;
+  }
+}
+
+$("createAccountBtn").onclick=()=>{
+  const name=$("nicknameInput").value.trim();
+  if(creatingSlot===null || rootData.profiles[creatingSlot]) return openProfileScreen();
+  if(name.length<2||name.length>12){ alert("닉네임은 2~12자로 입력해주세요."); return; }
+  if(!/^[가-힣a-zA-Z0-9]+$/.test(name)){ alert("한글, 영문, 숫자만 사용할 수 있습니다."); return; }
+  rootData.profiles[creatingSlot]=defaultProfile(name);
+  activeSlot=creatingSlot;
+  saveData=rootData.profiles[activeSlot];
+  creatingSlot=null;
+  saveGame();
+  refreshLobby();
+  showScreen("lobbyScreen");
+};
+$("cancelCreateBtn").onclick=()=>{creatingSlot=null;renderProfiles();showScreen("profileScreen");};
+$("nicknameInput").addEventListener("keydown",e=>{if(e.key==="Enter") $("createAccountBtn").click();});
+
+$("startBtn").onclick=startRun;
+$("switchProfileBtn").onclick=openProfileScreen;
+
+function closePanel(){ $("panel").innerHTML=""; }
+function panelHeader(title){
+  return `<div class="panelHeader"><h3>${title}</h3><button class="panelClose" onclick="closePanel()" aria-label="창 닫기">×</button></div>`;
+}
+function openInfoPanel(title,text){
+  $("panel").innerHTML=`${panelHeader(title)}<p class="sub">${text}</p>`;
+}
+
+$("resetBtn").onclick=()=>{
+  $("panel").innerHTML=`
+    ${panelHeader("설정")}
+    <div class="resultLine"><span>사운드</span><b>${soundEnabled?"ON":"OFF"}</b></div>
+    <button class="secondary" onclick="toggleSound();document.getElementById('resetBtn').click()">사운드 켜기/끄기</button>
+    <button class="danger" id="hardResetBtn">전체 데이터 초기화</button>
+  `;
+  $("hardResetBtn").onclick=()=>{
+    if(confirm("5개 파일럿을 포함한 모든 저장 데이터를 초기화할까요?")){
+      localStorage.removeItem(SAVE_KEY);
+      localStorage.removeItem(LEGACY_SAVE_KEY);
+      rootData=defaultRoot();activeSlot=null;saveData=null;
+      renderProfiles();showScreen("profileScreen");
+    }
+  };
+};
+
+const QUEST_DEFS={
+  firstFlight:{title:"첫 비행 완료",target:1,reward:{coins:300,gems:0,exp:50}},
+  kill10:{title:"몬스터 10마리 처치",target:10,reward:{coins:500,gems:0,exp:100}},
+  reach500:{title:"500m 도달",target:1,reward:{coins:700,gems:2,exp:150}},
+  firstBoss:{title:"첫 보스 처치",target:1,reward:{coins:1000,gems:3,exp:250}}
+};
+function questValue(key){
+  const q=saveData.quests;
+  if(key==="firstFlight") return q.firstFlight?1:0;
+  if(key==="kill10") return Math.min(q.kill10,QUEST_DEFS[key].target);
+  if(key==="reach500") return q.reach500?1:0;
+  if(key==="firstBoss") return q.firstBoss?1:0;
+  return 0;
+}
+function rewardText(reward){
+  return [
+    reward.coins?`🪙 ${format(reward.coins)}`:"",
+    reward.gems?`💎 ${format(reward.gems)}`:"",
+    reward.exp?`⭐ EXP ${format(reward.exp)}`:""
+  ].filter(Boolean).join("  ");
+}
+function renderQuestPanel(){
+  $("panel").innerHTML=`
+    ${panelHeader("초보자 퀘스트")}
+    <p class="tiny" style="margin-bottom:10px">목표를 달성하면 코인, 보석, 경험치를 받을 수 있습니다.</p>
+    ${Object.keys(QUEST_DEFS).map(questHtml).join("")}
+  `;
+}
+function questHtml(key){
+  const def=QUEST_DEFS[key];
+  const value=questValue(key);
+  const done=value>=def.target;
+  const claimed=!!saveData.quests.claimed[key];
+  const percent=Math.min(100,value/def.target*100);
+  const button=claimed
+    ? `<button class="claimBtn" disabled>수령 완료</button>`
+    : done
+      ? `<button class="claimBtn" onclick="claimQuest('${key}')">보상 받기</button>`
+      : `<button class="claimBtn" disabled>진행 중</button>`;
+  return `<div class="quest ${done?"done":""} ${claimed?"claimed":""}">
+    <div class="questTop"><span class="questTitle">${def.title}</span><span class="questProgress">${value} / ${def.target}</span></div>
+    <div class="bar" style="margin-top:8px;height:10px"><i style="width:${percent}%"></i></div>
+    <div class="questRewardRow"><span class="questReward">보상 ${rewardText(def.reward)}</span>${button}</div>
+  </div>`;
+}
+function claimQuest(key){
+  const def=QUEST_DEFS[key];
+  if(!def || saveData.quests.claimed[key] || questValue(key)<def.target) return;
+  saveData.quests.claimed[key]=true;
+  saveData.account.coins+=def.reward.coins||0;
+  saveData.account.gems+=def.reward.gems||0;
+  const expResult=addSharedExp(def.reward.exp||0);
+  saveGame();
+  refreshLobby();
+  renderQuestPanel();
+  if(expResult.levelUps>0){
+    SFX.levelup();
+    queueLevelUpNotices(expResult.before,expResult.after);
+    if(expResult.after>=MAX_LEVEL&&expResult.before<MAX_LEVEL) startMaxLevelFireworks();
+  }
+}
+$("questsBtn").onclick=renderQuestPanel;
+
+$("recordsBtn").onclick=()=>{
+  const f=saveData.flight;
+  $("panel").innerHTML=`
+    ${panelHeader("비행 기록")}
+    <div class="resultLine"><span>총 비행</span><b>${format(f.totalFlights)}회</b></div>
+    <div class="resultLine"><span>최고 거리</span><b>${format(f.bestDistance)}m</b></div>
+    <div class="resultLine"><span>최고 점수</span><b>${format(f.bestScore)}</b></div>
+    <div class="resultLine"><span>몬스터 처치</span><b>${format(f.totalMonsterKills)}</b></div>
+    <div class="resultLine"><span>보스 처치</span><b>${format(f.totalBossKills)}</b></div>
+  `;
+};
+
+document.addEventListener("keydown",e=>{if(e.key==="Escape") closePanel();});
+
+renderProfiles();
+if(activeSlot!==null && saveData){refreshLobby();showScreen("lobbyScreen");}
+else showScreen("profileScreen");
+
+
+// ---------- Audio ----------
+let audioCtx=null;
+let masterGain=null;
+let bgmGain=null;
+let sfxGain=null;
+let bgmTimer=null;
+let soundEnabled=true;
+let bgmStep=0;
+
+function initAudio(){
+  if(!soundEnabled) return;
+  if(!audioCtx){
+    const AudioContext=window.AudioContext||window.webkitAudioContext;
+    if(!AudioContext) return;
+    audioCtx=new AudioContext();
+    masterGain=audioCtx.createGain();
+    bgmGain=audioCtx.createGain();
+    sfxGain=audioCtx.createGain();
+    masterGain.gain.value=.75;
+    bgmGain.gain.value=.12;
+    sfxGain.gain.value=.22;
+    bgmGain.connect(masterGain);
+    sfxGain.connect(masterGain);
+    masterGain.connect(audioCtx.destination);
+  }
+  if(audioCtx.state==='suspended') audioCtx.resume();
+}
+
+function tone(freq,duration=.08,type='square',volume=.18,slideTo=null,delay=0){
+  if(!soundEnabled) return;
+  initAudio();
+  if(!audioCtx) return;
+  const now=audioCtx.currentTime+delay;
+  const osc=audioCtx.createOscillator();
+  const gain=audioCtx.createGain();
+  osc.type=type;
+  osc.frequency.setValueAtTime(freq,now);
+  if(slideTo) osc.frequency.exponentialRampToValueAtTime(Math.max(20,slideTo),now+duration);
+  gain.gain.setValueAtTime(.0001,now);
+  gain.gain.exponentialRampToValueAtTime(Math.max(.0002,volume),now+.008);
+  gain.gain.exponentialRampToValueAtTime(.0001,now+duration);
+  osc.connect(gain);gain.connect(sfxGain);
+  osc.start(now);osc.stop(now+duration+.02);
+}
+
+function noise(duration=.09,volume=.12){
+  if(!soundEnabled) return;
+  initAudio();
+  if(!audioCtx) return;
+  const len=Math.max(1,Math.floor(audioCtx.sampleRate*duration));
+  const buffer=audioCtx.createBuffer(1,len,audioCtx.sampleRate);
+  const data=buffer.getChannelData(0);
+  for(let i=0;i<len;i++) data[i]=(Math.random()*2-1)*(1-i/len);
+  const src=audioCtx.createBufferSource();
+  const gain=audioCtx.createGain();
+  gain.gain.value=volume;
+  src.buffer=buffer;src.connect(gain);gain.connect(sfxGain);src.start();
+}
+
+const SFX={
+  shoot(){tone(760,.035,'square',.035,1120)},
+  hit(){noise(.11,.16);tone(120,.13,'sawtooth',.13,55)},
+  kill(){tone(330,.07,'triangle',.12,520);tone(660,.07,'triangle',.08,880,.045)},
+  boss(){tone(180,.22,'sawtooth',.16,70);tone(360,.18,'square',.13,720,.12);tone(900,.3,'triangle',.12,1250,.25)},
+  levelup(){[523,659,784,1047].forEach((f,i)=>tone(f,.18,'triangle',.14,null,i*.09))}
+};
+
+function startBgm(){
+  initAudio();
+  if(!audioCtx||bgmTimer) return;
+  const melody=[262,330,392,523,392,330,294,392,494,587,494,392,330,392,523,659];
+  bgmStep=0;
+  bgmTimer=setInterval(()=>{
+    if(!soundEnabled||!game||game.paused||game.over) return;
+    const f=melody[bgmStep++%melody.length];
+    const now=audioCtx.currentTime;
+    const osc=audioCtx.createOscillator();
+    const gain=audioCtx.createGain();
+    osc.type='triangle';osc.frequency.value=f;
+    gain.gain.setValueAtTime(.0001,now);
+    gain.gain.exponentialRampToValueAtTime(.08,now+.02);
+    gain.gain.exponentialRampToValueAtTime(.0001,now+.22);
+    osc.connect(gain);gain.connect(bgmGain);osc.start(now);osc.stop(now+.24);
+  },240);
+}
+function stopBgm(){if(bgmTimer){clearInterval(bgmTimer);bgmTimer=null;}}
+function toggleSound(){
+  soundEnabled=!soundEnabled;
+  $('soundBtn').textContent=soundEnabled?'🔊':'🔇';
+  if(soundEnabled){initAudio();startBgm();}
+  else stopBgm();
+}
+
+// ---------- Game ----------
+const canvas=$("gameCanvas");
+const ctx=canvas.getContext("2d");
+let W=360,H=640,DPR=1;
+let game=null;
+let lastTime=0;
+let raf=0;
+
+function resizeCanvas(){
+  DPR=Math.min(2,window.devicePixelRatio||1);
+  W=Math.max(1,window.innerWidth);
+  H=Math.max(1,window.innerHeight);
+  canvas.style.width="100%";
+  canvas.style.height="100%";
+  canvas.width=Math.floor(W*DPR);
+  canvas.height=Math.floor(H*DPR);
+  ctx.setTransform(DPR,0,0,DPR,0,0);
+  if(game?.player){game.player.x=Math.max(22,Math.min(W-22,game.player.x));game.player.y=Math.max(88,Math.min(H-72,game.player.y));}
+}
+window.addEventListener("resize",resizeCanvas);
+resizeCanvas();
+
+function startRun(){
+  initAudio();
+  startBgm();
+  if(!saveData) return openProfileScreen();
+  $("panel").innerHTML="";
+  showScreen("gameScreen");
+  resizeCanvas();
+
+  const a=saveData.account;
+  game={
+    running:true, paused:false, over:false,
+    distance:0, elapsedFlightTime:0, flightSpeed:22, killScore:0, distanceScore:0, bonusScore:0,totalScore:0,
+    pendingExp:0, previewLevel:a.level, previewExp:a.exp,
+    monsterKills:0,bossKills:0,petExpGained:0,
+    nextBossDistance:500,bossInterval:500,bossActive:false,
+    spawnTimer:0, shootTimer:0, petShootTimer:0,
+    player:{x:W/2,y:H-95,w:34,h:44,hp:3,maxHp:3,speed:300,inv:0},
+    bullets:[], enemies:[], enemyBullets:[], particles:[], popups:[],
+    stars:Array.from({length:70},()=>({x:Math.random()*W,y:Math.random()*H,s:1+Math.random()*2,v:25+Math.random()*80})),
+    boss:null,
+    keys:{left:false,right:false,up:false,down:false},
+    drag:false,
+    completed:false,
+    expBarLevelChanged:false,
+    lastExpPercent:0,
+    levelNoticeQueue:[],
+    levelNoticePlaying:false,
+    maxCelebrated:a.level>=MAX_LEVEL
+  };
+  hideOverlay();
+  updateHud();
+  lastTime=performance.now();
+  cancelAnimationFrame(raf);
+  raf=requestAnimationFrame(loop);
+}
+
+function loop(t){
+  const dt=Math.min(0.033,(t-lastTime)/1000||0);
+  lastTime=t;
+  if(game&&game.running){
+    if(!game.paused&&!game.over) update(dt);
+    draw();
+    raf=requestAnimationFrame(loop);
+  }
+}
+
+function update(dt){
+  const g=game;
+  // 비행 시작 후 4분 동안 22m/s에서 170m/s까지 일정하게 가속합니다.
+  // 170m/s × 3.6 = 약 612km/h이며, 4분 이후에는 최고속도를 유지합니다.
+  g.elapsedFlightTime += dt;
+  const accelerationProgress=Math.min(1,g.elapsedFlightTime/240);
+  g.flightSpeed=22+(170-22)*accelerationProgress;
+  g.distance += g.flightSpeed*dt;
+  g.distanceScore = Math.floor(g.distance);
+  g.totalScore = g.killScore + g.distanceScore + g.bonusScore;
+
+  g.player.inv=Math.max(0,g.player.inv-dt);
+  movePlayer(dt);
+
+  g.shootTimer-=dt;
+  if(g.shootTimer<=0){
+    g.shootTimer=0.18;
+    const playerAttack=getPlayerAttack(g.previewLevel);
+    g.bullets.push({x:g.player.x,y:g.player.y-24,v:-620,r:4,damage:playerAttack});
+    SFX.shoot();
+  }
+
+  g.petShootTimer-=dt;
+  if(g.petShootTimer<=0){
+    g.petShootTimer=.34;
+    const pets=saveData.pets;
+    const py=g.player.y-6;
+    g.bullets.push({x:g.player.x-34,y:py,v:-560,r:3,damage:petAttack(pets.left.level),pet:true});
+    g.bullets.push({x:g.player.x+34,y:py,v:-560,r:3,damage:petAttack(pets.right.level),pet:true});
+  }
+
+  g.spawnTimer-=dt;
+  if(!g.bossActive&&g.spawnTimer<=0){
+    spawnFormation();
+    g.spawnTimer=Math.max(.55,1.7-g.distance/4000);
+  }
+
+  if(!g.bossActive&&g.distance>=g.nextBossDistance){
+    spawnBoss();
+  }
+
+  updateStars(dt);
+  updateBullets(dt);
+  updateEnemies(dt);
+  updateBoss(dt);
+  updateParticles(dt);
+  updatePopups(dt);
+  collisions();
+
+  if(g.distance>=500) saveData.quests.reach500=true;
+  updateHud();
+}
+
+function movePlayer(dt){
+  const p=game.player,k=game.keys;
+  let dx=(k.right?1:0)-(k.left?1:0);
+  let dy=(k.down?1:0)-(k.up?1:0);
+  if(dx||dy){
+    const len=Math.hypot(dx,dy)||1;
+    p.x+=dx/len*p.speed*dt;
+    p.y+=dy/len*p.speed*dt;
+  }
+  p.x=Math.max(22,Math.min(W-22,p.x));
+  p.y=Math.max(88,Math.min(H-72,p.y));
+}
+
+function getPlayerAttack(level){
+  const lv=Math.max(1,Math.min(MAX_LEVEL,Math.floor(level)||1));
+  // 플레이어 레벨 1당 공격력 1: Lv.1=1, Lv.300=300
+  return lv;
+}
+
+function getMonsterHp(distance){
+  // 장거리일수록 일반 몬스터의 체력이 꾸준히 증가합니다.
+  return Math.max(1,1+Math.floor(distance/950));
+}
+
+function getBossLevel(){
+  return game.bossKills+1;
+}
+
+function getBossHp(level,distance){
+  const lv=Math.max(1,Math.floor(level)||1);
+  // Lv.1의 체력은 100이며, 다음 레벨에 필요한 체력 증가량이 매번 1%(1 HP)씩 증가합니다.
+  // 누적 공식: 100*Lv + Lv*(Lv-1)/2
+  // Lv.1=100, Lv.2=201, Lv.3=303, Lv.4=406
+  return Math.floor(100*lv + (lv*(lv-1))/2);
+}
+
+function spawnFormation(){
+  const count=5;
+  const gap=Math.min(58,(W-50)/(count-1));
+  const start=W/2-gap*(count-1)/2;
+  const base=10;
+  const mult=Math.min(10,1+Math.floor(game.distance/500)*.2);
+  const score=Math.max(10,Math.floor(base*mult));
+  const hp=getMonsterHp(game.distance);
+  for(let i=0;i<count;i++){
+    game.enemies.push({
+      x:start+i*gap,y:-30-Math.random()*20,w:28,h:28,
+      v:70+Math.min(140,game.distance/18),
+      hp,maxHp:hp,score,
+      phase:Math.random()*Math.PI*2
+    });
+  }
+}
+
+function spawnBoss(){
+  const level=getBossLevel();
+  const hp=getBossHp(level,game.distance);
+  game.bossActive=true;
+  game.boss={
+    x:W/2,y:-70,w:100,h:72,hp,maxHp:hp,level,
+    t:0,shot:0,score:500+Math.floor(game.distance)+level*120
+  };
+  $("bossLevelText").textContent=`BOSS Lv.${level}`;
+  $("bossHpText").textContent=`${hp} / ${hp}`;
+  $("bossBar").style.width="100%";
+  $("bossBarWrap").classList.add("show");
+}
+
+function updateStars(dt){
+  for(const s of game.stars){
+    s.y+=s.v*(game.flightSpeed/22)*dt;
+    if(s.y>H){s.y=-5;s.x=Math.random()*W;}
+  }
+}
+
+function updateBullets(dt){
+  for(const b of game.bullets) b.y+=b.v*dt;
+  for(const b of game.enemyBullets){ b.y+=b.vy*dt; b.x+=b.vx*dt; }
+  game.bullets=game.bullets.filter(b=>b.y>-30);
+  game.enemyBullets=game.enemyBullets.filter(b=>b.y<H+30&&b.x>-30&&b.x<W+30);
+}
+
+function updateEnemies(dt){
+  for(const e of game.enemies){
+    e.y+=e.v*dt;
+    e.x+=Math.sin(e.y*.02+e.phase)*18*dt;
+  }
+  game.enemies=game.enemies.filter(e=>{
+    if(e.y>H+40){ damagePlayer(); return false; }
+    return true;
+  });
+}
+
+function updateBoss(dt){
+  const b=game.boss;
+  if(!b) return;
+  b.t+=dt;
+  if(b.y<95) b.y+=80*dt;
+  else b.x=W/2+Math.sin(b.t*.9)*(W*.32);
+
+  b.shot-=dt;
+  if(b.shot<=0&&b.y>=80){
+    // 초반 보스는 1발부터 시작한다. 보스 레벨이 오를수록 점진적으로 증가하며 최대 10발이다.
+    const bulletCount=Math.min(10,1+Math.floor((b.level-1)/2));
+    const progress=(bulletCount-1)/9;
+    b.shot=Math.max(.55,1.35-b.level*.035);
+    const spread=.18+progress*.92;
+    const bulletSpeed=155+Math.min(105,b.level*4);
+    if(bulletCount===1){
+      game.enemyBullets.push({x:b.x,y:b.y+25,vx:0,vy:bulletSpeed,r:5});
+    }else{
+      for(let i=0;i<bulletCount;i++){
+        const a=-spread/2+spread*(i/(bulletCount-1));
+        game.enemyBullets.push({x:b.x,y:b.y+25,vx:Math.sin(a)*bulletSpeed*.82,vy:Math.cos(a)*bulletSpeed,r:5+Math.min(2,b.level/20)});
+      }
+    }
+  }
+}
+
+function updateParticles(dt){
+  for(const p of game.particles){
+    p.life-=dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.vy+=40*dt;
+  }
+  game.particles=game.particles.filter(p=>p.life>0);
+}
+function updatePopups(dt){
+  for(const p of game.popups){p.life-=dt;p.y-=38*dt;}
+  game.popups=game.popups.filter(p=>p.life>0);
+}
+
+function rectHit(a,b){
+  return Math.abs(a.x-b.x)<(a.w+b.w)/2 && Math.abs(a.y-b.y)<(a.h+b.h)/2;
+}
+function circleRectHit(c,r){
+  const dx=Math.abs(c.x-r.x),dy=Math.abs(c.y-r.y);
+  return dx<(r.w/2+c.r)&&dy<(r.h/2+c.r);
+}
+
+function collisions(){
+  const g=game;
+  for(let bi=g.bullets.length-1;bi>=0;bi--){
+    const b=g.bullets[bi];
+    let used=false;
+    for(let ei=g.enemies.length-1;ei>=0;ei--){
+      const e=g.enemies[ei];
+      if(circleRectHit(b,e)){
+        g.bullets.splice(bi,1);used=true;e.hp-=b.damage;
+        if(e.hp<=0){
+          g.enemies.splice(ei,1);
+          defeatEnemy(e);
+        }
+        break;
+      }
+    }
+    if(used) continue;
+    if(g.boss&&circleRectHit(b,g.boss)){
+      g.bullets.splice(bi,1);
+      g.boss.hp-=b.damage;
+      burst(b.x,b.y,2);
+      if(g.boss.hp<=0) defeatBoss();
+    }
+  }
+
+  for(let i=g.enemyBullets.length-1;i>=0;i--){
+    if(circleRectHit(g.enemyBullets[i],g.player)){
+      g.enemyBullets.splice(i,1);
+      damagePlayer();
+    }
+  }
+  for(let i=g.enemies.length-1;i>=0;i--){
+    if(rectHit(g.enemies[i],g.player)){
+      g.enemies.splice(i,1);
+      damagePlayer();
+    }
+  }
+  if(g.boss&&rectHit(g.boss,g.player)) damagePlayer();
+}
+
+function defeatEnemy(e){
+  const before=Math.floor(game.killScore/10);
+  game.killScore+=e.score;
+  game.monsterKills++;
+  game.petExpGained+=1;
+  const after=Math.floor(game.killScore/10);
+  const gained=after-before;
+  game.pendingExp=after;
+  if(gained>0) popup(e.x,e.y,`+${gained} EXP`);
+  SFX.kill();
+  popup(e.x,e.y+16,`+${e.score}`);
+  burst(e.x,e.y,10);
+  recalcPreview();
+}
+
+function defeatBoss(){
+  const b=game.boss;
+  const before=Math.floor(game.killScore/10);
+  game.killScore+=b.score;
+  game.bossKills++;
+  game.petExpGained+=12;
+  const after=Math.floor(game.killScore/10);
+  const gained=after-before;
+  game.pendingExp=after;
+  popup(b.x,b.y,`+${gained} EXP`);
+  SFX.boss();
+  burst(b.x,b.y,38);
+  game.boss=null;
+  game.bossActive=false;
+  $("bossBarWrap").classList.remove("show");
+
+  game.bossInterval=Math.min(game.bossInterval+250,3000);
+  game.nextBossDistance=game.distance+game.bossInterval;
+  recalcPreview();
+}
+
+function damagePlayer(){
+  const p=game.player;
+  if(p.inv>0||game.over) return;
+  p.hp--;p.inv=1.35;
+  SFX.hit();
+  burst(p.x,p.y,14);
+  if(p.hp<=0) gameOver();
+}
+
+function popup(x,y,text){
+  game.popups.push({x,y,text,life:.8,maxLife:.8});
+}
+function burst(x,y,count){
+  for(let i=0;i<count;i++){
+    const a=Math.random()*Math.PI*2,s=30+Math.random()*130;
+    game.particles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:.35+Math.random()*.55});
+  }
+}
+
+let levelNoticeTimer=null;
+const globalLevelNoticeQueue=[];
+let globalLevelNoticePlaying=false;
+function queueLevelUpNotices(fromLevel,toLevel){
+  for(let lv=fromLevel+1;lv<=toLevel;lv++) globalLevelNoticeQueue.push(lv);
+  playNextLevelNotice();
+}
+function playNextLevelNotice(){
+  if(globalLevelNoticePlaying||!globalLevelNoticeQueue.length) return;
+  globalLevelNoticePlaying=true;
+  const lv=globalLevelNoticeQueue.shift();
+  const notice=$("levelUpNotice");
+  if(!notice){globalLevelNoticePlaying=false;return;}
+  notice.querySelector(".noticeLevel").textContent=`LEVEL ${lv}`;
+  notice.classList.add("show");
+  clearTimeout(levelNoticeTimer);
+  levelNoticeTimer=setTimeout(()=>{
+    notice.classList.remove("show");
+    setTimeout(()=>{
+      globalLevelNoticePlaying=false;
+      playNextLevelNotice();
+    },220);
+  },1500);
+}
+
+let fireworksRaf=0,fireworksEnd=0,fireworkParticles=[],fireworkBursts=[];
+function startMaxLevelFireworks(){
+  const fc=$("fireworksCanvas");
+  if(!fc) return;
+  cancelAnimationFrame(fireworksRaf);
+  fireworkParticles=[]; fireworkBursts=[];
+  fireworksEnd=performance.now()+10000;
+  fc.classList.add("show");
+  const fctx=fc.getContext("2d");
+  const resize=()=>{const r=fc.getBoundingClientRect();fc.width=Math.max(1,Math.floor(r.width*devicePixelRatio));fc.height=Math.max(1,Math.floor(r.height*devicePixelRatio));fctx.setTransform(devicePixelRatio,0,0,devicePixelRatio,0,0)};
+  resize();
+  let last=performance.now(),spawn=0;
+  function frame(now){
+    const dt=Math.min(.033,(now-last)/1000); last=now;
+    const w=fc.clientWidth,h=fc.clientHeight;
+    fctx.clearRect(0,0,w,h);
+    spawn-=dt;
+    if(spawn<=0&&now<fireworksEnd){
+      spawn=.18+Math.random()*.22;
+      const x=w*(.12+Math.random()*.76),y=h*(.15+Math.random()*.5);
+      const hue=Math.floor(Math.random()*360);
+      for(let i=0;i<42;i++){
+        const a=Math.PI*2*i/42+Math.random()*.08,s=75+Math.random()*145;
+        fireworkParticles.push({x,y,vx:Math.cos(a)*s,vy:Math.sin(a)*s,life:1.2+Math.random()*.6,max:1.8,hue});
+      }
+    }
+    for(let i=fireworkParticles.length-1;i>=0;i--){
+      const p=fireworkParticles[i];p.life-=dt;p.vy+=78*dt;p.x+=p.vx*dt;p.y+=p.vy*dt;p.vx*=.992;
+      if(p.life<=0){fireworkParticles.splice(i,1);continue;}
+      const alpha=Math.max(0,p.life/p.max);
+      fctx.fillStyle=`hsla(${p.hue},100%,65%,${alpha})`;
+      fctx.beginPath();fctx.arc(p.x,p.y,2.1,0,Math.PI*2);fctx.fill();
+    }
+    if(now<fireworksEnd||fireworkParticles.length){fireworksRaf=requestAnimationFrame(frame)}else{fc.classList.remove("show");fctx.clearRect(0,0,w,h)}
+  }
+  fireworksRaf=requestAnimationFrame(frame);
+}
+
+function recalcPreview(){
+  const previousLevel=game.previewLevel;
+  let level=saveData.account.level;
+  let exp=saveData.account.exp+game.pendingExp;
+  while(level<MAX_LEVEL&&exp>=EXP_TABLE[level].needed){
+    exp-=EXP_TABLE[level].needed;
+    level++;
+  }
+  if(level>=MAX_LEVEL){level=MAX_LEVEL;exp=0;}
+  game.previewLevel=level;
+  game.previewExp=exp;
+  if(level>previousLevel){
+    game.expBarLevelChanged=true;
+    SFX.levelup();
+    queueLevelUpNotices(previousLevel,level);
+    if(level>=MAX_LEVEL&&!game.maxCelebrated){
+      game.maxCelebrated=true;
+      startMaxLevelFireworks();
+    }
+  }
+}
+
+function addSharedExp(amount){
+  const a=saveData.account;
+  const before=a.level;
+  if(a.level>=MAX_LEVEL) return {before,after:MAX_LEVEL,levelUps:0};
+  a.exp+=Math.max(0,Math.floor(amount));
+  while(a.level<MAX_LEVEL&&a.exp>=EXP_TABLE[a.level].needed){
+    a.exp-=EXP_TABLE[a.level].needed;
+    a.level++;
+  }
+  if(a.level>=MAX_LEVEL){a.level=MAX_LEVEL;a.exp=0;}
+  return {before,after:a.level,levelUps:a.level-before};
+}
+
+function gameOver(){
+  if(game.over) return;
+  stopBgm();
+  game.over=true;
+  game.completed=true;
+
+  const earnedExp=Math.floor(game.killScore/10);
+  const expResult=addSharedExp(earnedExp);
+  addPetExp(saveData.pets.left,game.petExpGained);
+  addPetExp(saveData.pets.right,game.petExpGained);
+  if(expResult.after>=MAX_LEVEL&&expResult.before<MAX_LEVEL&&!game.maxCelebrated){game.maxCelebrated=true;startMaxLevelFireworks();}
+
+  const f=saveData.flight;
+  f.totalFlights++;
+  f.bestDistance=Math.max(f.bestDistance,Math.floor(game.distance));
+  f.bestScore=Math.max(f.bestScore,Math.floor(game.totalScore));
+  f.totalMonsterKills+=game.monsterKills;
+  f.totalBossKills+=game.bossKills;
+  f.totalKillScore+=game.killScore;
+
+  saveData.account.coins+=Math.floor(game.killScore/5);
+  saveData.quests.firstFlight=true;
+  saveData.quests.kill10+=game.monsterKills;
+  if(game.bossKills>0) saveData.quests.firstBoss=true;
+
+  saveGame();
+
+  // 게임오버 결과가 저장된 뒤에도 상단 HUD를 유지하고 최종 레벨/EXP로 갱신한다.
+  game.previewLevel=saveData.account.level;
+  game.previewExp=saveData.account.exp;
+  game.pendingExp=earnedExp;
+  game.expBarLevelChanged=true;
+  updateHud();
+
+  const levelText=expResult.levelUps>0
+    ? `<div class="levelup">LEVEL UP! Lv.${expResult.before} → Lv.${expResult.after}</div>`
+    : `<div>Lv.${saveData.account.level}</div>`;
+
+  showOverlay(`
+    <h2>GAME OVER</h2>
+    ${levelText}
+    <div class="resultLine"><span>비행 거리</span><b>${format(game.distance)}m</b></div>
+    <div class="resultLine"><span>처치 점수</span><b>${format(game.killScore)}</b></div>
+    <div class="resultLine"><span>거리 점수</span><b>${format(game.distanceScore)}</b></div>
+    <div class="resultLine"><span>최종 점수</span><b>${format(game.totalScore)}</b></div>
+    <div class="resultLine"><span>획득 경험치</span><b>${format(earnedExp)} EXP</b></div>
+    <div class="resultLine"><span>펫 경험치</span><b>각 +${format(game.petExpGained)}</b></div>
+    <p class="tiny" style="margin-top:12px">10점 미만의 남은 처치 점수는 다음 비행으로 이월되지 않습니다.</p>
+    <div class="stack">
+      <button class="primary" onclick="startRun()">다시 비행</button>
+      <button class="secondary" onclick="returnLobby()">로비로</button>
+    </div>
+  `);
+}
+
+function abandonRun(){
+  game.running=false;
+  cancelAnimationFrame(raf);
+  returnLobby();
+}
+function returnLobby(){
+  if(!saveData) return openProfileScreen();
+  if(game) game.running=false;
+  cancelAnimationFrame(raf);
+  hideOverlay();
+  refreshLobby();
+  showScreen("lobbyScreen");
+}
+
+$("soundBtn").onclick=toggleSound;
+
+$("pauseBtn").onclick=()=>{
+  if(!game||game.over) return;
+  game.paused=true;
+  showOverlay(`
+    <h2>일시정지</h2>
+    <div class="stack">
+      <button class="primary" onclick="resumeRun()">계속하기</button>
+      <button class="danger" onclick="confirmAbandon()">비행 포기</button>
+    </div>
+    <p class="tiny" style="margin-top:12px">포기하면 이번 비행의 점수와 경험치는 저장되지 않습니다.</p>
+  `);
+};
+function resumeRun(){hideOverlay();game.paused=false;lastTime=performance.now();startBgm();}
+function confirmAbandon(){
+  showOverlay(`
+    <h2>비행을 포기할까요?</h2>
+    <p class="sub">이번 판의 처치 점수, 경험치, 기록이 모두 사라집니다.</p>
+    <div class="stack">
+      <button class="danger" onclick="abandonRun()">포기하기</button>
+      <button class="secondary" onclick="resumeRun()">계속하기</button>
+    </div>
+  `);
+}
+function showOverlay(html){$("overlayContent").innerHTML=html;$("overlay").classList.add("show");}
+function hideOverlay(){$("overlay").classList.remove("show");}
+
+function updateHud(){
+  if(!game) return;
+  $("distanceHud").textContent=format(game.distance)+"m";
+  $("killScoreHud").textContent=format(game.killScore);
+  $("totalScoreHud").textContent=format(game.totalScore);
+  $("speedHud").textContent=Math.round(game.flightSpeed*3.6)+"km/h";
+  $("previewNameHud").textContent=saveData.account.nickname;
+  renderRankBadge($("previewRankHud"),game.previewLevel);
+  $("pendingExpHud").textContent=game.over?`획득 +${format(game.pendingExp)} EXP`:`이번 비행 +${format(game.pendingExp)} EXP`;
+  $("previewLevelHud").textContent=game.previewLevel>=MAX_LEVEL?"Lv.300":`Lv.${game.previewLevel}`;
+  const expBar=$("previewExpBar");
+  let targetPercent=100;
+  if(game.previewLevel<MAX_LEVEL){
+    const need=EXP_TABLE[game.previewLevel].needed;
+    targetPercent=Math.min(100,game.previewExp/need*100);
+    $("expValueHud").textContent=`${format(game.previewExp)}/${format(need)}[${expPercent(game.previewExp,need,game.previewLevel)}]`;
+  }else{
+    $("expValueHud").textContent="MAX[100.000%]";
+  }
+  if(game.expBarLevelChanged){
+    expBar.style.transition="none";
+    expBar.style.width=targetPercent+"%";
+    void expBar.offsetWidth;
+    expBar.style.transition="width .9s linear";
+    game.expBarLevelChanged=false;
+  }else if(Math.abs(targetPercent-game.lastExpPercent)>.001){
+    expBar.style.transition="width .9s linear";
+    expBar.style.width=targetPercent+"%";
+  }
+  game.lastExpPercent=targetPercent;
+  if(game.boss){
+    $("bossLevelText").textContent=`BOSS Lv.${game.boss.level}`;
+    $("bossHpText").textContent=`${Math.max(0,Math.ceil(game.boss.hp))} / ${game.boss.maxHp}`;
+    $("bossBar").style.width=Math.max(0,game.boss.hp/game.boss.maxHp*100)+"%";
+  }
+}
+
+function draw(){
+  ctx.clearRect(0,0,W,H);
+  const grad=ctx.createLinearGradient(0,0,0,H);
+  grad.addColorStop(0,"#0b2b4d");
+  grad.addColorStop(1,"#071426");
+  ctx.fillStyle=grad;ctx.fillRect(0,0,W,H);
+
+  for(const s of game.stars){
+    ctx.globalAlpha=.45+.4*(s.s/3);
+    ctx.fillStyle="#dff6ff";ctx.fillRect(s.x,s.y,s.s,s.s*2);
+  }
+  ctx.globalAlpha=1;
+
+  // bullets
+  for(const b of game.bullets){ctx.fillStyle=b.pet?"#ffd65a":"#75e8ff";ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,Math.PI*2);ctx.fill();}
+  ctx.fillStyle="#ff708b";
+  for(const b of game.enemyBullets){ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,Math.PI*2);ctx.fill();}
+
+  // enemies
+  for(const e of game.enemies){
+    ctx.save();ctx.translate(e.x,e.y);
+    ctx.fillStyle="#8c65ff";ctx.beginPath();ctx.arc(0,0,14,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle="white";ctx.fillRect(-8,-4,5,5);ctx.fillRect(3,-4,5,5);
+    ctx.fillStyle="#071426";ctx.fillRect(-6,-2,2,2);ctx.fillRect(5,-2,2,2);
+    // 일반 몬스터는 숫자 없이 체력 막대만 표시합니다.
+    const hpRatio=Math.max(0,Math.min(1,e.hp/e.maxHp));
+    ctx.fillStyle="rgba(0,0,0,.72)";ctx.fillRect(-17,-23,34,5);
+    ctx.fillStyle=hpRatio>.55?"#63ef78":hpRatio>.25?"#ffd24a":"#ff596f";
+    ctx.fillRect(-16,-22,32*hpRatio,3);
+    ctx.restore();
+  }
+
+  if(game.boss){
+    const b=game.boss;
+    ctx.save();ctx.translate(b.x,b.y);
+    ctx.fillStyle="#ff5e78";ctx.beginPath();ctx.roundRect(-50,-36,100,72,22);ctx.fill();
+    ctx.fillStyle="white";ctx.fillRect(-25,-10,14,12);ctx.fillRect(11,-10,14,12);
+    ctx.fillStyle="#071426";ctx.fillRect(-19,-6,6,6);ctx.fillRect(13,-6,6,6);
+    ctx.fillStyle="#071426";ctx.fillRect(-20,14,40,7);
+    ctx.fillStyle="#ffe66d";ctx.font="bold 13px sans-serif";ctx.textAlign="center";
+    ctx.shadowColor="rgba(0,0,0,.9)";ctx.shadowBlur=4;ctx.fillText(`BOSS Lv.${b.level}`,0,-46);ctx.shadowBlur=0;
+    ctx.restore();
+  }
+
+  // 좌우 펫: 플레이어를 따라다니는 작은 지원 비행기 2대
+  const p=game.player;
+  if(!(p.inv>0&&Math.floor(p.inv*12)%2===0)){
+    for(const side of [-1,1]){
+      const px=p.x+side*34,py=p.y+6;
+      ctx.save();ctx.translate(px,py);
+      ctx.fillStyle=side<0?"#ffd65a":"#ff9ed8";
+      ctx.beginPath();ctx.moveTo(0,-12);ctx.lineTo(10,8);ctx.lineTo(3,6);ctx.lineTo(0,12);ctx.lineTo(-3,6);ctx.lineTo(-10,8);ctx.closePath();ctx.fill();
+      ctx.fillStyle="#fff";ctx.fillRect(-2,-6,4,9);ctx.restore();
+    }
+  }
+
+  // player
+  if(!(p.inv>0&&Math.floor(p.inv*12)%2===0)){
+    ctx.save();ctx.translate(p.x,p.y);
+    ctx.fillStyle="#64d9ff";
+    ctx.beginPath();
+    ctx.moveTo(0,-24);ctx.lineTo(18,18);ctx.lineTo(5,13);ctx.lineTo(0,23);ctx.lineTo(-5,13);ctx.lineTo(-18,18);ctx.closePath();ctx.fill();
+    ctx.fillStyle="#ffffff";ctx.fillRect(-3,-12,6,18);
+    ctx.restore();
+  }
+
+  // hp
+  ctx.fillStyle="#ff6b81";
+  ctx.font="20px sans-serif";
+  ctx.textAlign="left";
+  ctx.fillText("♥".repeat(Math.max(0,p.hp)),12,H-58);
+
+  for(const q of game.particles){
+    ctx.globalAlpha=Math.max(0,q.life/.9);
+    ctx.fillStyle="#ffd76a";ctx.fillRect(q.x,q.y,4,4);
+  }
+  ctx.globalAlpha=1;
+
+  ctx.font="bold 17px sans-serif";
+  ctx.textAlign="center";
+  for(const pop of game.popups){
+    ctx.globalAlpha=Math.max(0,pop.life/pop.maxLife);
+    ctx.lineWidth=4;ctx.strokeStyle="rgba(0,0,0,.75)";
+    ctx.strokeText(pop.text,pop.x,pop.y);
+    ctx.fillStyle=pop.text.includes("EXP")?"#8effb3":"#ffffff";
+    ctx.fillText(pop.text,pop.x,pop.y);
+  }
+  ctx.globalAlpha=1;
+}
+
+// Keyboard
+window.addEventListener("keydown",e=>{
+  if(!game) return;
+  if(e.key==="ArrowLeft"||e.key==="a") game.keys.left=true;
+  if(e.key==="ArrowRight"||e.key==="d") game.keys.right=true;
+  if(e.key==="ArrowUp"||e.key==="w") game.keys.up=true;
+  if(e.key==="ArrowDown"||e.key==="s") game.keys.down=true;
+});
+window.addEventListener("keyup",e=>{
+  if(!game) return;
+  if(e.key==="ArrowLeft"||e.key==="a") game.keys.left=false;
+  if(e.key==="ArrowRight"||e.key==="d") game.keys.right=false;
+  if(e.key==="ArrowUp"||e.key==="w") game.keys.up=false;
+  if(e.key==="ArrowDown"||e.key==="s") game.keys.down=false;
+});
+
+// Pointer / touch
+function pointerPos(ev){
+  const r=canvas.getBoundingClientRect();
+  return {x:(ev.clientX-r.left)*(W/r.width),y:(ev.clientY-r.top)*(H/r.height)};
+}
+canvas.addEventListener("pointerdown",e=>{
+  if(!game||game.paused||game.over) return;
+  game.drag=true;canvas.setPointerCapture(e.pointerId);
+  const p=pointerPos(e);game.player.x=p.x;game.player.y=p.y;
+});
+canvas.addEventListener("pointermove",e=>{
+  if(!game||!game.drag||game.paused||game.over) return;
+  const p=pointerPos(e);game.player.x=p.x;game.player.y=p.y;
+});
+canvas.addEventListener("pointerup",e=>{if(game) game.drag=false;});
+canvas.addEventListener("pointercancel",e=>{if(game) game.drag=false;});
+
+window.addEventListener("beforeunload",()=>{
+  // 진행 중 run은 저장하지 않음
+});
+</script>
+</body>
+</html>
