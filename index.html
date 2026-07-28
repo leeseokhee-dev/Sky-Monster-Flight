@@ -387,6 +387,7 @@ const defaultProfile = (nickname="") => ({
   quests:{firstFlight:false,kill10:0,reach500:false,firstBoss:false,claimed:{firstFlight:false,kill10:false,reach500:false,firstBoss:false}},
   repeatQuests:{kill30:0,fly3:0},
   dailyQuests:{date:"",flights:0,kills:0,distance:0,bosses:0,claimed:{fly2:false,kill25:false,reach1000:false,boss1:false}},
+  weeklyQuests:{week:"",flights:0,kills:0,distance:0,bosses:0,claimed:{fly15:false,kill200:false,reach10000:false,boss5:false}},
   pets:{left:{level:1,exp:0},right:{level:1,exp:0}}
 });
 const defaultRoot = () => ({selectedSlot:null,profiles:Array(MAX_PROFILES).fill(null)});
@@ -404,7 +405,8 @@ function normalizeProfile(profile){
     flight:{...d.flight,...(profile?.flight||{})},
     quests:{...d.quests,...(profile?.quests||{}),claimed:{...d.quests.claimed,...(profile?.quests?.claimed||{})}},
     repeatQuests:{...d.repeatQuests,...(profile?.repeatQuests||{})},
-    dailyQuests:{...d.dailyQuests,...(profile?.dailyQuests||{}),claimed:{...d.dailyQuests.claimed,...(profile?.dailyQuests?.claimed||{})}},
+    dailyQuests:{...d.dailyQuests,...(profile?.dailyQuests||{}),claimed:{...d.dailyQuests.claimed,...(profile?.dailyQuests?.claimed||{})},},
+    weeklyQuests:{...d.weeklyQuests,...(profile?.weeklyQuests||{}),claimed:{...d.weeklyQuests.claimed,...(profile?.weeklyQuests?.claimed||{})},},
     pets:{
       left:{...d.pets.left,...(profile?.pets?.left||{})},
       right:{...d.pets.right,...(profile?.pets?.right||{})}
@@ -614,14 +616,20 @@ const QUEST_DEFS={
   firstBoss:{title:"첫 보스 처치",target:1,reward:{coins:1000,gems:3,exp:250}}
 };
 const REPEAT_QUEST_DEFS={
-  kill30:{title:"몬스터 30마리 처치",target:30,reward:{coins:350,gems:0,exp:220}},
-  fly3:{title:"비행 3회 완료",target:3,reward:{coins:250,gems:0,exp:180}}
+  kill30:{title:"몬스터 30마리 처치",target:30,reward:{coins:350,gems:0,exp:220},expRate:.025},
+  fly3:{title:"비행 3회 완료",target:3,reward:{coins:250,gems:0,exp:180},expRate:.02}
 };
 const DAILY_QUEST_DEFS={
-  fly2:{title:"오늘 비행 2회",target:2,field:"flights",reward:{coins:400,gems:1,exp:300}},
-  kill25:{title:"오늘 몬스터 25마리 처치",target:25,field:"kills",reward:{coins:500,gems:1,exp:400}},
-  reach1000:{title:"오늘 누적 1,000m 비행",target:1000,field:"distance",reward:{coins:700,gems:2,exp:600}},
-  boss1:{title:"오늘 보스 1마리 처치",target:1,field:"bosses",reward:{coins:900,gems:2,exp:800}}
+  fly2:{title:"오늘 비행 2회",target:2,field:"flights",reward:{coins:400,gems:1,exp:300},expRate:.05},
+  kill25:{title:"오늘 몬스터 25마리 처치",target:25,field:"kills",reward:{coins:500,gems:1,exp:400},expRate:.06},
+  reach1000:{title:"오늘 누적 1,000m 비행",target:1000,field:"distance",reward:{coins:700,gems:2,exp:600},expRate:.08},
+  boss1:{title:"오늘 보스 1마리 처치",target:1,field:"bosses",reward:{coins:900,gems:2,exp:800},expRate:.1}
+};
+const WEEKLY_QUEST_DEFS={
+  fly15:{title:"이번 주 비행 15회",target:15,field:"flights",reward:{coins:2500,gems:5,exp:1800},expRate:.18},
+  kill200:{title:"이번 주 몬스터 200마리 처치",target:200,field:"kills",reward:{coins:3500,gems:7,exp:2400},expRate:.22},
+  reach10000:{title:"이번 주 누적 10,000m 비행",target:10000,field:"distance",reward:{coins:4500,gems:9,exp:3200},expRate:.28},
+  boss5:{title:"이번 주 보스 5마리 처치",target:5,field:"bosses",reward:{coins:6000,gems:12,exp:4000},expRate:.35}
 };
 function localDateKey(){
   const d=new Date();
@@ -633,6 +641,29 @@ function ensureDailyQuests(){
     saveData.dailyQuests={date:today,flights:0,kills:0,distance:0,bosses:0,claimed:{fly2:false,kill25:false,reach1000:false,boss1:false}};
     saveGame();
   }
+}
+function getWeekKey(){
+  const d=new Date();
+  const day=(d.getDay()+6)%7;
+  d.setHours(0,0,0,0);
+  d.setDate(d.getDate()-day);
+  return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,"0")}-${String(d.getDate()).padStart(2,"0")}`;
+}
+function ensureWeeklyQuests(){
+  const week=getWeekKey();
+  if(saveData.weeklyQuests.week!==week){
+    saveData.weeklyQuests={week,flights:0,kills:0,distance:0,bosses:0,claimed:{fly15:false,kill200:false,reach10000:false,boss5:false}};
+    saveGame();
+  }
+}
+function scaledQuestReward(def){
+  const base={...(def.reward||{})};
+  const level=Math.max(1,Math.min(MAX_LEVEL,saveData.account.level||1));
+  const refLevel=level>=MAX_LEVEL?MAX_LEVEL-1:level;
+  const needed=EXP_TABLE[refLevel]?.needed||0;
+  const scaled=Math.floor(needed*(def.expRate||0));
+  base.exp=Math.max(base.exp||0,scaled);
+  return base;
 }
 function questValue(key){
   const q=saveData.quests;
@@ -651,9 +682,10 @@ function rewardText(reward){
 }
 function renderQuestPanel(){
   ensureDailyQuests();
+  ensureWeeklyQuests();
   $("panel").innerHTML=`
     ${panelHeader("퀘스트")}
-    <p class="tiny" style="margin-bottom:10px">초보자 퀘스트 외에도 반복·일일 퀘스트에서 경험치를 계속 획득할 수 있습니다.</p>
+    <p class="tiny" style="margin-bottom:10px">반복·일일·주간 퀘스트의 경험치 보상은 현재 레벨에 맞춰 증가합니다.</p>
     <h4 style="margin:12px 0 8px">🌱 초보자 퀘스트</h4>
     ${Object.keys(QUEST_DEFS).map(questHtml).join("")}
     <h4 style="margin:18px 0 8px">♻️ 반복 퀘스트</h4>
@@ -661,6 +693,9 @@ function renderQuestPanel(){
     <h4 style="margin:18px 0 8px">☀️ 일일 퀘스트</h4>
     <p class="tiny" style="margin:-3px 0 8px">매일 자정에 진행도가 초기화됩니다.</p>
     ${Object.keys(DAILY_QUEST_DEFS).map(dailyQuestHtml).join("")}
+    <h4 style="margin:18px 0 8px">📅 주간 퀘스트</h4>
+    <p class="tiny" style="margin:-3px 0 8px">매주 월요일 자정에 진행도가 초기화됩니다.</p>
+    ${Object.keys(WEEKLY_QUEST_DEFS).map(weeklyQuestHtml).join("")}
   `;
 }
 function questCard(def,value,claimed,action){
@@ -674,7 +709,7 @@ function questCard(def,value,claimed,action){
   return `<div class="quest ${done?"done":""} ${claimed?"claimed":""}">
     <div class="questTop"><span class="questTitle">${def.title}</span><span class="questProgress">${format(Math.min(value,def.target))} / ${format(def.target)}</span></div>
     <div class="bar" style="margin-top:8px;height:10px"><i style="width:${percent}%"></i></div>
-    <div class="questRewardRow"><span class="questReward">보상 ${rewardText(def.reward)}</span>${button}</div>
+    <div class="questRewardRow"><span class="questReward">보상 ${rewardText(def.expRate?scaledQuestReward(def):def.reward)}</span>${button}</div>
   </div>`;
 }
 function questHtml(key){
@@ -687,6 +722,10 @@ function repeatQuestHtml(key){
 function dailyQuestHtml(key){
   const def=DAILY_QUEST_DEFS[key];
   return questCard(def,saveData.dailyQuests[def.field]||0,!!saveData.dailyQuests.claimed[key],`claimDailyQuest('${key}')`);
+}
+function weeklyQuestHtml(key){
+  const def=WEEKLY_QUEST_DEFS[key];
+  return questCard(def,saveData.weeklyQuests[def.field]||0,!!saveData.weeklyQuests.claimed[key],`claimWeeklyQuest('${key}')`);
 }
 function grantQuestReward(reward){
   saveData.account.coins+=reward.coins||0;
@@ -709,7 +748,7 @@ function claimRepeatQuest(key){
   const def=REPEAT_QUEST_DEFS[key];
   if(!def || (saveData.repeatQuests[key]||0)<def.target) return;
   saveData.repeatQuests[key]-=def.target;
-  grantQuestReward(def.reward);
+  grantQuestReward(scaledQuestReward(def));
   saveGame();refreshLobby();renderQuestPanel();
 }
 function claimDailyQuest(key){
@@ -717,7 +756,15 @@ function claimDailyQuest(key){
   const def=DAILY_QUEST_DEFS[key];
   if(!def || saveData.dailyQuests.claimed[key] || (saveData.dailyQuests[def.field]||0)<def.target) return;
   saveData.dailyQuests.claimed[key]=true;
-  grantQuestReward(def.reward);
+  grantQuestReward(scaledQuestReward(def));
+  saveGame();refreshLobby();renderQuestPanel();
+}
+function claimWeeklyQuest(key){
+  ensureWeeklyQuests();
+  const def=WEEKLY_QUEST_DEFS[key];
+  if(!def || saveData.weeklyQuests.claimed[key] || (saveData.weeklyQuests[def.field]||0)<def.target) return;
+  saveData.weeklyQuests.claimed[key]=true;
+  grantQuestReward(scaledQuestReward(def));
   saveGame();refreshLobby();renderQuestPanel();
 }
 $("questsBtn").onclick=renderQuestPanel;
@@ -1337,6 +1384,13 @@ function gameOver(){
   saveData.dailyQuests.kills+=game.monsterKills;
   saveData.dailyQuests.distance+=Math.floor(game.distance);
   saveData.dailyQuests.bosses+=game.bossKills;
+
+  // 주간 퀘스트는 매주 월요일 자정에 자동 초기화됩니다.
+  ensureWeeklyQuests();
+  saveData.weeklyQuests.flights+=1;
+  saveData.weeklyQuests.kills+=game.monsterKills;
+  saveData.weeklyQuests.distance+=Math.floor(game.distance);
+  saveData.weeklyQuests.bosses+=game.bossKills;
 
   saveGame();
 
