@@ -246,7 +246,7 @@
       <span class="sky">스페이스</span><span class="monster">에어</span><span class="flight">헌터</span>
       <span class="seasonTag">시즌 1 · 첫 출격</span>
     </div>
-    <div class="lobbyVersion">Ver. 1.3.0 · GEM & BOSS UPDATE</div>
+    <div class="lobbyVersion">Ver. 1.3.1 · GEM & BOSS UPDATE</div>
 
     <div class="hangarStage" aria-label="보유 기체와 펫 편대">
       <div class="hangarGlow"></div><div class="hangarRing"></div>
@@ -1144,7 +1144,7 @@ function startRun(){
     distance:0, elapsedFlightTime:0, flightSpeed:22, killScore:0, displayedKillScore:0, distanceScore:0, bonusScore:0,totalScore:0,displayedTotalScore:0,
     pendingExp:0, previewLevel:a.level, previewExp:a.exp,
     monsterKills:0,bossKills:0,petExpGained:0,
-    nextBossDistance:200,bossInterval:200,bossActive:false,
+    nextBossDistance:500,bossInterval:500,bossActive:false,
     spawnTimer:0, shootTimer:0, petShootTimer:0,
     player:{x:W/2,y:H-95,w:34,h:44,
       hp:3+(saveData.upgrades.armor||0),maxHp:3+(saveData.upgrades.armor||0),
@@ -1297,8 +1297,9 @@ function getMonsterHp(distance){
 }
 
 function getBossLevel(){
-  // 첫 보스는 200m에서 Lv.1, 이후 200m마다 1레벨씩 증가합니다.
-  return Math.max(1,Math.floor(game.distance/200));
+  // 보스 출현 간격과 무관하게 이동거리 200m마다 보스 레벨이 1씩 증가합니다.
+  // 0~199m=Lv.1, 200~399m=Lv.2, 400~599m=Lv.3 ...
+  return Math.max(1,Math.floor(game.distance/200)+1);
 }
 
 function getBossHp(level,distance){
@@ -1496,8 +1497,8 @@ function defeatBoss(){
   $("bossClearSub").textContent=`BOSS Lv.${b.level} 비행체 격추 · +${format(b.score)}점`;
   $("bossClearNotice").classList.add("show");
 
-  game.bossInterval=200;
-  game.nextBossDistance=(b.level+1)*200;
+  game.bossInterval=Math.min(game.bossInterval+250,3000);
+  game.nextBossDistance=game.distance+game.bossInterval;
   recalcPreview();
 }
 
@@ -1684,7 +1685,7 @@ function continueRun(){
   game.player.inv=3;
   game.enemyBullets.length=0;
   game.enemies.length=0;
-  if(game.boss){game.boss=null;game.bossActive=false;game.nextBossDistance=Math.ceil(game.distance/200)*200+200;}
+  if(game.boss){game.boss=null;game.bossActive=false;game.nextBossDistance=game.distance+game.bossInterval;}
   $("bossBarWrap").classList.remove("show");
   $("bossBar").style.width="0%";
   hideOverlay();
