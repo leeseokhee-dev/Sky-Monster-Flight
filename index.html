@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-<title>Sky Monster Flight - Boss Balance HUD</title>
+<title>스카이 몬스터 헌터</title>
 <style>
   :root{
     --bg:#071426;
@@ -111,8 +111,15 @@
   #pauseBtn{right:max(8px,env(safe-area-inset-right))}
   #soundBtn{right:58px}
   @media(max-width:340px){.playerStatusHud{width:calc(100vw - 8px);height:74px;padding:4px 5px}.expGaugeRow{height:14px}.expLabel{flex-basis:40px}.pilotName,.levelText{font-size:11px}.rankBadge{width:26px;height:26px;flex-basis:26px}.rankIcon{width:22px;height:22px}.pendingText{font-size:9px}}
+  #consumableHud{position:absolute;z-index:22;left:8px;bottom:max(10px,env(safe-area-inset-bottom));display:flex;gap:6px;pointer-events:auto}
+  .consumableBtn{min-width:62px;height:48px;padding:4px 6px;border-radius:11px;background:rgba(2,10,20,.86);border:1px solid rgba(255,255,255,.18);color:#fff;font-size:9px;line-height:1.1}
+  .consumableBtn span{display:block;font-size:19px;margin-bottom:2px}.consumableBtn b{color:#ffe06d}.consumableBtn:disabled{opacity:.42;cursor:default}
   #bossBarWrap{display:none;position:absolute;left:12px;right:12px;top:92px;background:rgba(2,10,20,.8);padding:8px 10px;border-radius:13px}
   #bossBarWrap.show{display:block}
+  #bossClearNotice{position:absolute;z-index:58;left:50%;top:42%;transform:translate(-50%,-50%) scale(.86);width:min(88vw,420px);padding:22px 18px;border:2px solid rgba(255,230,109,.9);border-radius:20px;background:linear-gradient(180deg,rgba(24,58,91,.97),rgba(7,24,43,.98));box-shadow:0 16px 55px rgba(0,0,0,.55),0 0 28px rgba(255,213,47,.28);text-align:center;pointer-events:none;opacity:0;visibility:hidden;transition:opacity .16s ease,transform .16s ease,visibility .16s}
+  #bossClearNotice.show{opacity:1;visibility:visible;transform:translate(-50%,-50%) scale(1)}
+  #bossClearNotice .clearTitle{display:block;color:#ffe56d;font-size:clamp(27px,8vw,48px);font-weight:1000;letter-spacing:.08em;text-shadow:0 3px 0 #945900,0 7px 16px rgba(0,0,0,.65)}
+  #bossClearNotice .clearSub{display:block;margin-top:8px;color:#d9ecff;font-size:clamp(13px,3.5vw,18px);font-weight:850}
   #overlay{position:absolute;z-index:15;left:0;right:0;bottom:0;top:max(62px,calc(env(safe-area-inset-top) + 62px));display:none;align-items:center;justify-content:center;background:rgba(0,0,0,.63);padding:20px}
   #overlay.show{display:flex}
   .overlayCard{width:min(380px,100%);max-height:calc(100vh - 86px);overflow:auto;background:#102541;border-radius:22px;padding:20px;text-align:center}
@@ -187,7 +194,7 @@
 <section id="profileScreen" class="screen">
   <div class="card stack">
     <div>
-      <h1><span class="brand">Sky Monster</span><br>Flight</h1>
+      <h1><span class="brand">스카이 몬스터</span><br>헌터</h1>
       <p class="sub">플레이할 파일럿을 선택하세요. 한 기기에서 최대 5개의 파일럿을 독립적으로 육성할 수 있습니다.</p>
     </div>
     <div id="profileList" class="profile-list"></div>
@@ -236,8 +243,8 @@
     </div>
 
     <div class="lobbyLogo">
-      <span class="sky">Sky</span><span class="monster">Monster</span><span class="flight">Flight</span>
-      <span class="seasonTag">SEASON 1 · FIRST FLIGHT</span>
+      <span class="sky">스카이</span><span class="monster">몬스터</span><span class="flight">헌터</span>
+      <span class="seasonTag">시즌 1 · 첫 출격</span>
     </div>
     <div class="lobbyVersion">Ver. 1.2.0 · UPGRADE SHOP</div>
 
@@ -289,8 +296,8 @@
       <div id="expHud" class="playerStatusHud">
         <div class="hudStatsRow">
           <span class="hudStat">거리<b id="distanceHud">0m</b></span>
-          <span class="hudStat">처치<b id="killScoreHud">0</b></span>
-          <span class="hudStat">총점<b id="totalScoreHud">0</b></span>
+          <span class="hudStat">처치<b id="killScoreHud">000000000</b></span>
+          <span class="hudStat">총점<b id="totalScoreHud">000000000</b></span>
           <span class="hudStat">속도<b id="speedHud">0km/h</b></span>
         </div>
         <div class="playerIdentity">
@@ -309,11 +316,20 @@
           </div>
         </div>
       </div>
+      <div id="consumableHud">
+        <button id="repairItemBtn" class="consumableBtn" onclick="useConsumable('repair')"><span>🧰</span>수리 <b id="repairItemCount">0</b></button>
+        <button id="shieldItemBtn" class="consumableBtn" onclick="useConsumable('shield')"><span>🛡️</span>보호막 <b id="shieldItemCount">0</b></button>
+        <button id="scoreItemBtn" class="consumableBtn" onclick="useConsumable('score')"><span>🔥</span>점수↑ <b id="scoreItemCount">0</b></button>
+      </div>
       <button id="soundBtn" aria-label="소리 켜기 또는 끄기">🔊</button>
       <button id="pauseBtn">Ⅱ</button>
     </div>
 
     <canvas id="fireworksCanvas"></canvas>
+    <div id="bossClearNotice" aria-live="polite">
+      <span class="clearTitle">BOSS CLEAR!</span>
+      <span id="bossClearSub" class="clearSub">보스 비행체 격추 완료</span>
+    </div>
     <div id="levelUpNotice" aria-live="polite"><span class="noticeTitle">레벨이 올랐습니다!</span><span class="noticeLevel">LEVEL 2</span></div>
     <div id="overlay">
       <div class="overlayCard" id="overlayContent"></div>
@@ -390,7 +406,8 @@ const defaultProfile = (nickname="") => ({
   dailyQuests:{date:"",flights:0,kills:0,distance:0,bosses:0,claimed:{fly2:false,kill25:false,reach1000:false,boss1:false}},
   weeklyQuests:{week:"",flights:0,kills:0,distance:0,bosses:0,claimed:{fly15:false,kill200:false,reach10000:false,boss5:false}},
   pets:{left:{owned:false,level:1,exp:0,purchasePrice:3000},right:{owned:false,level:1,exp:0,purchasePrice:5000}},
-  upgrades:{power:0,armor:0,coinBoost:0,scoreBoost:0,mobility:0}
+  upgrades:{power:0,armor:0,coinBoost:0,scoreBoost:0,mobility:0},
+  consumables:{repair:0,shield:0,score:0}
 });
 const defaultRoot = () => ({selectedSlot:null,profiles:Array(MAX_PROFILES).fill(null)});
 
@@ -413,7 +430,8 @@ function normalizeProfile(profile){
       left:{...d.pets.left,...(profile?.pets?.left||{})},
       right:{...d.pets.right,...(profile?.pets?.right||{})}
     },
-    upgrades:{...d.upgrades,...(profile?.upgrades||{})}
+    upgrades:{...d.upgrades,...(profile?.upgrades||{})},
+    consumables:{...d.consumables,...(profile?.consumables||{})}
   };
 }
 function loadRoot(){
@@ -615,11 +633,16 @@ const PET_SHOP={
   left:{name:"라이트 윙",icon:"🛩️",price:3000,desc:"노란 지원기 · 빠른 연사 지원"},
   right:{name:"핑크 윙",icon:"🛩️",price:5000,desc:"분홍 지원기 · 정밀 사격 지원"}
 };
+const CONSUMABLE_SHOP={
+  repair:{name:"긴급 수리 키트",icon:"🧰",price:350,desc:"비행 중 체력을 2 회복합니다."},
+  shield:{name:"에너지 보호막",icon:"🛡️",price:500,desc:"비행 중 8초 동안 피해를 막습니다."},
+  score:{name:"점수 부스터",icon:"🔥",price:650,desc:"비행 중 20초 동안 비행체 점수 2배."}
+};
 const UPGRADE_SHOP={
   power:{name:"고출력 탄환",icon:"💥",max:20,basePrice:1200,priceRate:1.42,desc:"레벨마다 플레이어 공격력 +10%",effect:lv=>`공격력 +${lv*10}%`},
   armor:{name:"강화 장갑",icon:"🛡️",max:5,basePrice:2200,priceRate:1.75,desc:"레벨마다 최대 체력 +1",effect:lv=>`최대 체력 +${lv}`},
   coinBoost:{name:"코인 증폭기",icon:"🪙",max:10,basePrice:1800,priceRate:1.55,desc:"레벨마다 비행 코인 획득량 +10%",effect:lv=>`코인 +${lv*10}%`},
-  scoreBoost:{name:"점수 프로세서",icon:"📈",max:20,basePrice:1500,priceRate:1.45,desc:"레벨마다 일반 몬스터 점수 +5%",effect:lv=>`몬스터 점수 +${lv*5}%`},
+  scoreBoost:{name:"점수 프로세서",icon:"📈",max:20,basePrice:1500,priceRate:1.45,desc:"레벨마다 일반 비행체 점수 +5%",effect:lv=>`몬스터 점수 +${lv*5}%`},
   mobility:{name:"비행 안정기",icon:"🧭",max:5,basePrice:1600,priceRate:1.7,desc:"레벨마다 좌우 이동 속도 +20",effect:lv=>`이동 속도 +${lv*20}`}
 };
 function upgradePrice(key){
@@ -644,6 +667,14 @@ function renderShopPanel(){
         <button class="${maxed?"ghost":"primary"}" ${maxed?"disabled":""} style="width:100%;margin-top:10px" onclick="buyUpgrade('${key}')">${maxed?"최대 강화":"강화 구매"}</button>
       </div>`;
     }).join("")}
+    <h4 style="margin:18px 0 8px">🎒 소모형 아이템</h4>
+    <p class="tiny" style="margin-bottom:10px">구매한 아이템은 출격 중 화면 왼쪽 아래 버튼으로 사용할 수 있습니다.</p>
+    ${Object.entries(CONSUMABLE_SHOP).map(([key,item])=>`<div class="quest" style="margin-bottom:10px">
+      <div class="questTop"><span class="questTitle">${item.icon} ${item.name}</span><span class="questProgress">보유 ${format(saveData.consumables[key]||0)}개</span></div>
+      <p class="tiny" style="margin:7px 0">${item.desc}</p>
+      <div class="resultLine"><span>가격</span><b>🪙 ${format(item.price)}</b></div>
+      <button class="primary" style="width:100%;margin-top:10px" onclick="buyConsumable('${key}')">1개 구매</button>
+    </div>`).join("")}
     <h4 style="margin:18px 0 8px">🛩️ 펫</h4>
     <p class="tiny" style="margin-bottom:10px">펫은 구매 후 자동 공격합니다. 판매 시 구매가의 50%를 돌려받지만 펫 레벨과 경험치는 사라집니다.</p>
     ${Object.entries(PET_SHOP).map(([side,item])=>{
@@ -659,6 +690,14 @@ function renderShopPanel(){
       </div>`;
     }).join("")}
     <div class="resultLine"><span>보유 코인</span><b>🪙 ${format(a.coins)}</b></div>`;
+}
+function buyConsumable(key){
+  const item=CONSUMABLE_SHOP[key];
+  if(!item) return;
+  if(saveData.account.coins<item.price){alert(`코인이 부족합니다.\n필요: ${format(item.price)} 코인`);return;}
+  saveData.account.coins-=item.price;
+  saveData.consumables[key]=(saveData.consumables[key]||0)+1;
+  saveGame();refreshLobby();renderShopPanel();
 }
 function buyUpgrade(key){
   const item=UPGRADE_SHOP[key];
@@ -708,23 +747,23 @@ $("resetBtn").onclick=()=>{
 
 const QUEST_DEFS={
   firstFlight:{title:"첫 비행 완료",target:1,reward:{coins:300,gems:0,exp:50}},
-  kill10:{title:"몬스터 10마리 처치",target:10,reward:{coins:500,gems:0,exp:100}},
+  kill10:{title:"적 비행체 10대 격추",target:10,reward:{coins:500,gems:0,exp:100}},
   reach500:{title:"500m 도달",target:1,reward:{coins:700,gems:2,exp:150}},
   firstBoss:{title:"첫 보스 처치",target:1,reward:{coins:1000,gems:3,exp:250}}
 };
 const REPEAT_QUEST_DEFS={
-  kill30:{title:"몬스터 30마리 처치",target:30,reward:{coins:350,gems:0,exp:220},expRate:.025},
+  kill30:{title:"적 비행체 30대 격추",target:30,reward:{coins:350,gems:0,exp:220},expRate:.025},
   fly3:{title:"비행 3회 완료",target:3,reward:{coins:250,gems:0,exp:180},expRate:.02}
 };
 const DAILY_QUEST_DEFS={
   fly2:{title:"오늘 비행 2회",target:2,field:"flights",reward:{coins:400,gems:1,exp:300},expRate:.05},
-  kill25:{title:"오늘 몬스터 25마리 처치",target:25,field:"kills",reward:{coins:500,gems:1,exp:400},expRate:.06},
+  kill25:{title:"오늘 적 비행체 25대 격추",target:25,field:"kills",reward:{coins:500,gems:1,exp:400},expRate:.06},
   reach1000:{title:"오늘 누적 1,000m 비행",target:1000,field:"distance",reward:{coins:700,gems:2,exp:600},expRate:.08},
   boss1:{title:"오늘 보스 1마리 처치",target:1,field:"bosses",reward:{coins:900,gems:2,exp:800},expRate:.1}
 };
 const WEEKLY_QUEST_DEFS={
   fly15:{title:"이번 주 비행 15회",target:15,field:"flights",reward:{coins:2500,gems:5,exp:1800},expRate:.18},
-  kill200:{title:"이번 주 몬스터 200마리 처치",target:200,field:"kills",reward:{coins:3500,gems:7,exp:2400},expRate:.22},
+  kill200:{title:"이번 주 적 비행체 200대 격추",target:200,field:"kills",reward:{coins:3500,gems:7,exp:2400},expRate:.22},
   reach10000:{title:"이번 주 누적 10,000m 비행",target:10000,field:"distance",reward:{coins:4500,gems:9,exp:3200},expRate:.28},
   boss5:{title:"이번 주 보스 5마리 처치",target:5,field:"bosses",reward:{coins:6000,gems:12,exp:4000},expRate:.35}
 };
@@ -1057,10 +1096,16 @@ function startRun(){
   showScreen("gameScreen");
   resizeCanvas();
 
+  // 이전 비행에서 남은 보스 HUD와 클리어 연출을 새 출격 전에 완전히 초기화합니다.
+  $("bossBarWrap").classList.remove("show");
+  $("bossBar").style.width="0%";
+  $("bossHpText").textContent="0 / 0";
+  $("bossClearNotice").classList.remove("show");
+
   const a=saveData.account;
   game={
     running:true, paused:false, over:false,
-    distance:0, elapsedFlightTime:0, flightSpeed:22, killScore:0, distanceScore:0, bonusScore:0,totalScore:0,
+    distance:0, elapsedFlightTime:0, flightSpeed:22, killScore:0, displayedKillScore:0, distanceScore:0, bonusScore:0,totalScore:0,displayedTotalScore:0,
     pendingExp:0, previewLevel:a.level, previewExp:a.exp,
     monsterKills:0,bossKills:0,petExpGained:0,
     nextBossDistance:500,bossInterval:500,bossActive:false,
@@ -1078,7 +1123,8 @@ function startRun(){
     lastExpPercent:0,
     levelNoticeQueue:[],
     levelNoticePlaying:false,
-    maxCelebrated:a.level>=MAX_LEVEL
+    maxCelebrated:a.level>=MAX_LEVEL,
+    shieldTime:0,scoreBoostTime:0,bossClearTime:0
   };
   hideOverlay();
   updateHud();
@@ -1102,11 +1148,25 @@ function update(dt){
   // 비행 시작 후 4분 동안 22m/s에서 170m/s까지 일정하게 가속합니다.
   // 170m/s × 3.6 = 약 612km/h이며, 4분 이후에는 최고속도를 유지합니다.
   g.elapsedFlightTime += dt;
+  g.shieldTime=Math.max(0,g.shieldTime-dt);
+  g.scoreBoostTime=Math.max(0,g.scoreBoostTime-dt);
   const accelerationProgress=Math.min(1,g.elapsedFlightTime/240);
   g.flightSpeed=22+(170-22)*accelerationProgress;
   g.distance += g.flightSpeed*dt;
   g.distanceScore = Math.floor(g.distance);
   g.totalScore = g.killScore + g.distanceScore + g.bonusScore;
+  updateScoreAnimation(dt);
+
+  // 보스 클리어 박스가 보이는 2.5초 동안 적 생성·낙하·공격·충돌을 멈춥니다.
+  if(g.bossClearTime>0){
+    g.bossClearTime=Math.max(0,g.bossClearTime-dt);
+    updateStars(dt);
+    updateParticles(dt);
+    updatePopups(dt);
+    if(g.bossClearTime<=0) $("bossClearNotice").classList.remove("show");
+    updateHud();
+    return;
+  }
 
   g.player.inv=Math.max(0,g.player.inv-dt);
   movePlayer(dt);
@@ -1196,7 +1256,7 @@ function getPlayerBulletCount(level){
 }
 
 function getMonsterHp(distance){
-  // 장거리일수록 일반 몬스터의 체력이 꾸준히 증가합니다.
+  // 장거리일수록 일반 비행체의 체력이 꾸준히 증가합니다.
   return Math.max(1,1+Math.floor(distance/950));
 }
 
@@ -1217,10 +1277,11 @@ function spawnFormation(){
   const gap=Math.min(58,(W-50)/(count-1));
   const start=W/2-gap*(count-1)/2;
   const base=10;
-  // 20m마다 2%씩 계속 증가하며 상한은 없습니다.
-  const distanceMult=1+Math.floor(game.distance/20)*.02;
+  // 10m마다 일반 비행체 점수가 5%씩 계속 증가하며 상한은 없습니다.
+  const distanceMult=1+Math.floor(game.distance/10)*.05;
   const shopMult=1+(saveData.upgrades.scoreBoost||0)*.05;
-  const score=Math.max(10,Math.floor(base*distanceMult*shopMult));
+  const activeBoost=game.scoreBoostTime>0?2:1;
+  const score=Math.max(10,Math.floor(base*distanceMult*shopMult*activeBoost));
   const hp=getMonsterHp(game.distance);
   for(let i=0;i<count;i++){
     game.enemies.push({
@@ -1386,16 +1447,53 @@ function defeatBoss(){
   burst(b.x,b.y,38);
   game.boss=null;
   game.bossActive=false;
+  game.enemies.length=0;
+  game.enemyBullets.length=0;
+  game.bossClearTime=2.5;
   $("bossBarWrap").classList.remove("show");
+  $("bossBar").style.width="0%";
+  $("bossClearSub").textContent=`BOSS Lv.${b.level} 비행체 격추 완료`;
+  $("bossClearNotice").classList.add("show");
 
   game.bossInterval=Math.min(game.bossInterval+250,3000);
   game.nextBossDistance=game.distance+game.bossInterval;
   recalcPreview();
 }
 
+function useConsumable(key){
+  if(!game||game.over||game.paused) return;
+  const count=saveData.consumables[key]||0;
+  if(count<=0) return;
+  if(key==="repair"){
+    if(game.player.hp>=game.player.maxHp) return;
+    game.player.hp=Math.min(game.player.maxHp,game.player.hp+2);
+    popup(game.player.x,game.player.y-30,"HP +2");
+  }else if(key==="shield"){
+    game.shieldTime=Math.max(game.shieldTime,8);
+    popup(game.player.x,game.player.y-30,"보호막 8초");
+  }else if(key==="score"){
+    game.scoreBoostTime=Math.max(game.scoreBoostTime,20);
+    popup(game.player.x,game.player.y-30,"점수 2배 20초");
+  }else return;
+  saveData.consumables[key]=count-1;
+  saveGame();updateHud();
+}
+function updateScoreAnimation(dt){
+  const g=game;
+  const advance=(current,target)=>{
+    if(current>=target) return target;
+    const diff=target-current;
+    // 작은 점수는 프레임마다 1씩, 큰 점수는 자연스럽게 따라잡도록 가속합니다.
+    return Math.min(target,current+Math.max(1,Math.ceil(diff*Math.min(1,dt*9))));
+  };
+  g.displayedKillScore=advance(g.displayedKillScore,g.killScore);
+  const displayedTarget=g.displayedKillScore+g.distanceScore+g.bonusScore;
+  g.displayedTotalScore=advance(g.displayedTotalScore,displayedTarget);
+}
+function formatScore(n){return String(Math.max(0,Math.floor(n))).padStart(9,"0");}
 function damagePlayer(){
   const p=game.player;
-  if(p.inv>0||game.over) return;
+  if(p.inv>0||game.over||game.shieldTime>0) return;
   p.hp--;p.inv=1.35;
   SFX.hit();
   burst(p.x,p.y,14);
@@ -1515,6 +1613,13 @@ function gameOver(){
   stopBgm();
   game.over=true;
   game.completed=true;
+  game.boss=null;
+  game.bossActive=false;
+  game.bossClearTime=0;
+  $("bossBarWrap").classList.remove("show");
+  $("bossBar").style.width="0%";
+  $("bossHpText").textContent="0 / 0";
+  $("bossClearNotice").classList.remove("show");
 
   const earnedExp=Math.floor(game.killScore/10);
   const expResult=addSharedExp(earnedExp);
@@ -1630,8 +1735,14 @@ function hideOverlay(){$("overlay").classList.remove("show");}
 function updateHud(){
   if(!game) return;
   $("distanceHud").textContent=format(game.distance)+"m";
-  $("killScoreHud").textContent=format(game.killScore);
-  $("totalScoreHud").textContent=format(game.totalScore);
+  $("killScoreHud").textContent=formatScore(game.displayedKillScore);
+  $("totalScoreHud").textContent=formatScore(game.displayedTotalScore);
+  $("repairItemCount").textContent=format(saveData.consumables.repair||0);
+  $("shieldItemCount").textContent=format(saveData.consumables.shield||0);
+  $("scoreItemCount").textContent=format(saveData.consumables.score||0);
+  $("repairItemBtn").disabled=(saveData.consumables.repair||0)<=0||game.player.hp>=game.player.maxHp;
+  $("shieldItemBtn").disabled=(saveData.consumables.shield||0)<=0;
+  $("scoreItemBtn").disabled=(saveData.consumables.score||0)<=0;
   $("speedHud").textContent=Math.round(game.flightSpeed*3.6)+"km/h";
   $("previewNameHud").textContent=saveData.account.nickname;
   renderRankBadge($("previewRankHud"),game.previewLevel);
@@ -1682,17 +1793,22 @@ function draw(){
   ctx.fillStyle="#ff708b";
   for(const b of game.enemyBullets){ctx.beginPath();ctx.arc(b.x,b.y,b.r,0,Math.PI*2);ctx.fill();}
 
-  // enemies
+  // 일반 적: 작은 무인 비행 물체
   for(const e of game.enemies){
     ctx.save();ctx.translate(e.x,e.y);
-    ctx.fillStyle="#8c65ff";ctx.beginPath();ctx.arc(0,0,14,0,Math.PI*2);ctx.fill();
-    ctx.fillStyle="white";ctx.fillRect(-8,-4,5,5);ctx.fillRect(3,-4,5,5);
-    ctx.fillStyle="#071426";ctx.fillRect(-6,-2,2,2);ctx.fillRect(5,-2,2,2);
-    // 일반 몬스터는 숫자 없이 체력 막대만 표시합니다.
+    ctx.fillStyle="#806cff";
+    ctx.beginPath();
+    ctx.moveTo(0,15);ctx.lineTo(-7,3);ctx.lineTo(-17,-3);ctx.lineTo(-15,-9);
+    ctx.lineTo(-5,-6);ctx.lineTo(0,-15);ctx.lineTo(5,-6);ctx.lineTo(15,-9);
+    ctx.lineTo(17,-3);ctx.lineTo(7,3);ctx.closePath();ctx.fill();
+    ctx.fillStyle="#bfeaff";ctx.beginPath();ctx.ellipse(0,-3,5,8,0,0,Math.PI*2);ctx.fill();
+    ctx.fillStyle="#ffcf57";ctx.fillRect(-10,7,5,5);ctx.fillRect(5,7,5,5);
+    ctx.fillStyle="rgba(255,108,82,.78)";ctx.fillRect(-8,12,4,7);ctx.fillRect(4,12,4,7);
+    // 일반 비행체는 숫자 없이 체력 막대만 표시합니다.
     const hpRatio=Math.max(0,Math.min(1,e.hp/e.maxHp));
-    ctx.fillStyle="rgba(0,0,0,.72)";ctx.fillRect(-17,-23,34,5);
+    ctx.fillStyle="rgba(0,0,0,.72)";ctx.fillRect(-17,-25,34,5);
     ctx.fillStyle=hpRatio>.55?"#63ef78":hpRatio>.25?"#ffd24a":"#ff596f";
-    ctx.fillRect(-16,-22,32*hpRatio,3);
+    ctx.fillRect(-16,-24,32*hpRatio,3);
     ctx.restore();
   }
 
