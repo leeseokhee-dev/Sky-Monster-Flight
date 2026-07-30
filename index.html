@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no" />
-<title>스카이 몬스터 헌터</title>
+<title>스페이스 에어 헌터</title>
 <style>
   :root{
     --bg:#071426;
@@ -194,7 +194,7 @@
 <section id="profileScreen" class="screen">
   <div class="card stack">
     <div>
-      <h1><span class="brand">스카이 몬스터</span><br>헌터</h1>
+      <h1><span class="brand">스페이스 에어</span><br>헌터</h1>
       <p class="sub">플레이할 파일럿을 선택하세요. 한 기기에서 최대 5개의 파일럿을 독립적으로 육성할 수 있습니다.</p>
     </div>
     <div id="profileList" class="profile-list"></div>
@@ -243,7 +243,7 @@
     </div>
 
     <div class="lobbyLogo">
-      <span class="sky">스카이</span><span class="monster">몬스터</span><span class="flight">헌터</span>
+      <span class="sky">스페이스</span><span class="monster">에어</span><span class="flight">헌터</span>
       <span class="seasonTag">시즌 1 · 첫 출격</span>
     </div>
     <div class="lobbyVersion">Ver. 1.2.0 · UPGRADE SHOP</div>
@@ -259,7 +259,7 @@
 
     <div class="lobbyLeftRail">
       <div class="missionCard"><span class="eyebrow">BEST RECORD</span><b id="bestDistanceText">0m</b><span>최고 비행 거리</span></div>
-      <div class="missionCard"><span class="eyebrow">BOSS HUNT</span><b><span id="bossKillsText">0</span> KILLS</b><span>누적 보스 격추</span></div>
+      <div class="missionCard"><span class="eyebrow">AIR BOSS HUNT</span><b><span id="bossKillsText">0</span> KILLS</b><span>누적 보스 비행체 격추</span></div>
     </div>
 
     <div class="lobbyRightRail">
@@ -288,7 +288,7 @@
     <div id="hud">
       <div id="bossBarWrap">
         <div class="row" style="justify-content:space-between;align-items:center;gap:8px">
-          <b id="bossLevelText">BOSS Lv.1</b><span id="bossHpText">0 / 0</span>
+          <b id="bossLevelText">보스 비행체 Lv.1</b><span id="bossHpText">0 / 0</span>
         </div>
         <div class="bar"><i id="bossBar"></i></div>
       </div>
@@ -327,7 +327,7 @@
 
     <canvas id="fireworksCanvas"></canvas>
     <div id="bossClearNotice" aria-live="polite">
-      <span class="clearTitle">BOSS CLEAR!</span>
+      <span class="clearTitle">보스 비행체 격추!</span>
       <span id="bossClearSub" class="clearSub">보스 비행체 격추 완료</span>
     </div>
     <div id="levelUpNotice" aria-live="polite"><span class="noticeTitle">레벨이 올랐습니다!</span><span class="noticeLevel">LEVEL 2</span></div>
@@ -407,7 +407,8 @@ const defaultProfile = (nickname="") => ({
   weeklyQuests:{week:"",flights:0,kills:0,distance:0,bosses:0,claimed:{fly15:false,kill200:false,reach10000:false,boss5:false}},
   pets:{left:{owned:false,level:1,exp:0,purchasePrice:3000},right:{owned:false,level:1,exp:0,purchasePrice:5000}},
   upgrades:{power:0,armor:0,coinBoost:0,scoreBoost:0,mobility:0},
-  consumables:{repair:0,shield:0,score:0}
+  consumables:{repair:0,shield:0,score:0},
+  specialItems:{revive:0}
 });
 const defaultRoot = () => ({selectedSlot:null,profiles:Array(MAX_PROFILES).fill(null)});
 
@@ -431,7 +432,8 @@ function normalizeProfile(profile){
       right:{...d.pets.right,...(profile?.pets?.right||{})}
     },
     upgrades:{...d.upgrades,...(profile?.upgrades||{})},
-    consumables:{...d.consumables,...(profile?.consumables||{})}
+    consumables:{...d.consumables,...(profile?.consumables||{})},
+    specialItems:{...d.specialItems,...(profile?.specialItems||{})}
   };
 }
 function loadRoot(){
@@ -638,6 +640,11 @@ const CONSUMABLE_SHOP={
   shield:{name:"에너지 보호막",icon:"🛡️",price:500,desc:"비행 중 8초 동안 피해를 막습니다."},
   score:{name:"점수 부스터",icon:"🔥",price:650,desc:"비행 중 20초 동안 비행체 점수 2배."}
 };
+const GEM_SHOP={
+  revive:{name:"이어하기 티켓",icon:"💫",price:10,desc:"비행당 1회, 격추된 위치에서 최대 체력으로 이어합니다.",type:"special"},
+  supply:{name:"올인원 보급 상자",icon:"🎁",price:6,desc:"수리 키트·보호막·점수 부스터를 각각 1개 획득합니다.",type:"bundle"},
+  coinBox:{name:"프리미엄 코인 상자",icon:"🪙",price:5,desc:"코인 5,000개를 즉시 획득합니다.",type:"coins",amount:5000}
+};
 const UPGRADE_SHOP={
   power:{name:"고출력 탄환",icon:"💥",max:20,basePrice:1200,priceRate:1.42,desc:"레벨마다 플레이어 공격력 +10%",effect:lv=>`공격력 +${lv*10}%`},
   armor:{name:"강화 장갑",icon:"🛡️",max:5,basePrice:2200,priceRate:1.75,desc:"레벨마다 최대 체력 +1",effect:lv=>`최대 체력 +${lv}`},
@@ -653,7 +660,7 @@ function renderShopPanel(){
   const a=saveData.account;
   $("panel").innerHTML=`
     ${panelHeader("상점")}
-    <p class="tiny" style="margin-bottom:12px">모은 코인으로 영구 강화를 구매할 수 있습니다. 강화 효과는 모든 비행에 계속 적용됩니다.</p>
+    <p class="tiny" style="margin-bottom:12px">코인과 보석으로 강화 및 아이템을 구매할 수 있습니다. 영구 강화 효과는 모든 비행에 계속 적용됩니다.</p>
     <h4 style="margin:10px 0 8px">⚙️ 영구 강화</h4>
     ${Object.entries(UPGRADE_SHOP).map(([key,item])=>{
       const level=saveData.upgrades[key]||0;
@@ -675,6 +682,15 @@ function renderShopPanel(){
       <div class="resultLine"><span>가격</span><b>🪙 ${format(item.price)}</b></div>
       <button class="primary" style="width:100%;margin-top:10px" onclick="buyConsumable('${key}')">1개 구매</button>
     </div>`).join("")}
+
+    <h4 style="margin:18px 0 8px">💎 보석 전용 아이템</h4>
+    <p class="tiny" style="margin-bottom:10px">이어하기 티켓과 특별 보급품은 보석으로 구매합니다. 이어하기는 한 번의 비행에서 1회만 사용할 수 있습니다.</p>
+    ${Object.entries(GEM_SHOP).map(([key,item])=>`<div class="quest" style="margin-bottom:10px">
+      <div class="questTop"><span class="questTitle">${item.icon} ${item.name}</span><span class="questProgress">${key==="revive"?`보유 ${format(saveData.specialItems.revive||0)}개`:"즉시 지급"}</span></div>
+      <p class="tiny" style="margin:7px 0">${item.desc}</p>
+      <div class="resultLine"><span>가격</span><b>💎 ${format(item.price)}</b></div>
+      <button class="primary" style="width:100%;margin-top:10px" onclick="buyGemItem('${key}')">구매</button>
+    </div>`).join("")}
     <h4 style="margin:18px 0 8px">🛩️ 펫</h4>
     <p class="tiny" style="margin-bottom:10px">펫은 구매 후 자동 공격합니다. 판매 시 구매가의 50%를 돌려받지만 펫 레벨과 경험치는 사라집니다.</p>
     ${Object.entries(PET_SHOP).map(([side,item])=>{
@@ -689,7 +705,8 @@ function renderShopPanel(){
         <button class="${owned?"danger":"primary"}" style="width:100%;margin-top:10px" onclick="${owned?`sellPet('${side}')`:`buyPet('${side}')`}">${owned?"펫 판매":"펫 구매"}</button>
       </div>`;
     }).join("")}
-    <div class="resultLine"><span>보유 코인</span><b>🪙 ${format(a.coins)}</b></div>`;
+    <div class="resultLine"><span>보유 코인</span><b>🪙 ${format(a.coins)}</b></div>
+    <div class="resultLine"><span>보유 보석</span><b>💎 ${format(a.gems)}</b></div>`;
 }
 function buyConsumable(key){
   const item=CONSUMABLE_SHOP[key];
@@ -699,6 +716,20 @@ function buyConsumable(key){
   saveData.consumables[key]=(saveData.consumables[key]||0)+1;
   saveGame();refreshLobby();renderShopPanel();
 }
+function buyGemItem(key){
+  const item=GEM_SHOP[key];
+  if(!item) return;
+  if(saveData.account.gems<item.price){alert(`보석이 부족합니다.\n필요: ${format(item.price)} 보석`);return;}
+  saveData.account.gems-=item.price;
+  if(key==="revive") saveData.specialItems.revive=(saveData.specialItems.revive||0)+1;
+  else if(key==="supply"){
+    saveData.consumables.repair=(saveData.consumables.repair||0)+1;
+    saveData.consumables.shield=(saveData.consumables.shield||0)+1;
+    saveData.consumables.score=(saveData.consumables.score||0)+1;
+  }else if(key==="coinBox") saveData.account.coins+=item.amount||0;
+  saveGame();refreshLobby();renderShopPanel();
+}
+
 function buyUpgrade(key){
   const item=UPGRADE_SHOP[key];
   if(!item) return;
@@ -1124,7 +1155,7 @@ function startRun(){
     levelNoticeQueue:[],
     levelNoticePlaying:false,
     maxCelebrated:a.level>=MAX_LEVEL,
-    shieldTime:0,scoreBoostTime:0,bossClearTime:0
+    shieldTime:0,scoreBoostTime:0,bossClearTime:0,continueUsed:false
   };
   hideOverlay();
   updateHud();
@@ -1272,16 +1303,20 @@ function getBossHp(level,distance){
   return Math.floor(100*lv + (lv*(lv-1))/2);
 }
 
-function spawnFormation(){
-  const count=5;
-  const gap=Math.min(58,(W-50)/(count-1));
-  const start=W/2-gap*(count-1)/2;
+function getCurrentMonsterScore(){
   const base=10;
   // 10m마다 일반 비행체 점수가 5%씩 계속 증가하며 상한은 없습니다.
   const distanceMult=1+Math.floor(game.distance/10)*.05;
   const shopMult=1+(saveData.upgrades.scoreBoost||0)*.05;
   const activeBoost=game.scoreBoostTime>0?2:1;
-  const score=Math.max(10,Math.floor(base*distanceMult*shopMult*activeBoost));
+  return Math.max(10,Math.floor(base*distanceMult*shopMult*activeBoost));
+}
+
+function spawnFormation(){
+  const count=5;
+  const gap=Math.min(58,(W-50)/(count-1));
+  const start=W/2-gap*(count-1)/2;
+  const score=getCurrentMonsterScore();
   const hp=getMonsterHp(game.distance);
   for(let i=0;i<count;i++){
     game.enemies.push({
@@ -1299,9 +1334,9 @@ function spawnBoss(){
   game.bossActive=true;
   game.boss={
     x:W/2,y:-70,w:100,h:72,hp,maxHp:hp,level,
-    t:0,shot:0,score:500+Math.floor(game.distance)+level*120
+    t:0,shot:0,score:getCurrentMonsterScore()*25
   };
-  $("bossLevelText").textContent=`BOSS Lv.${level}`;
+  $("bossLevelText").textContent=`보스 비행체 Lv.${level}`;
   $("bossHpText").textContent=`${hp} / ${hp}`;
   $("bossBar").style.width="100%";
   $("bossBarWrap").classList.add("show");
@@ -1452,7 +1487,7 @@ function defeatBoss(){
   game.bossClearTime=2.5;
   $("bossBarWrap").classList.remove("show");
   $("bossBar").style.width="0%";
-  $("bossClearSub").textContent=`BOSS Lv.${b.level} 비행체 격추 완료`;
+  $("bossClearSub").textContent=`보스 비행체 Lv.${b.level} 격추 · +${format(b.score)}점`;
   $("bossClearNotice").classList.add("show");
 
   game.bossInterval=Math.min(game.bossInterval+250,3000);
@@ -1609,9 +1644,55 @@ function addSharedExp(amount){
 }
 
 function gameOver(){
-  if(game.over) return;
+  if(!game||game.completed||game.over) return;
+  game.over=true;
+  game.paused=true;
+  stopBgm();
+  const ticketCount=saveData.specialItems.revive||0;
+  const canUseTicket=!game.continueUsed&&ticketCount>0;
+  const canUseGems=!game.continueUsed&&saveData.account.gems>=10;
+  showOverlay(`
+    <h2>비행체 격추</h2>
+    <p class="sub">이번 비행은 아직 끝나지 않았습니다. 비행당 한 번 이어할 수 있습니다.</p>
+    <div class="resultLine"><span>이어하기 티켓</span><b>💫 ${format(ticketCount)}개</b></div>
+    <div class="resultLine"><span>보유 보석</span><b>💎 ${format(saveData.account.gems)}</b></div>
+    <div class="stack">
+      <button class="primary" ${canUseTicket?"":"disabled"} onclick="continueRun('ticket')">티켓으로 이어하기</button>
+      <button class="secondary" ${canUseGems?"":"disabled"} onclick="continueRun('gems')">💎 10개로 이어하기</button>
+      <button class="danger" onclick="finalGameOver()">비행 종료</button>
+    </div>
+  `);
+}
+
+function continueRun(method){
+  if(!game||game.completed||game.continueUsed) return;
+  if(method==="ticket"){
+    if((saveData.specialItems.revive||0)<=0) return;
+    saveData.specialItems.revive--;
+  }else if(method==="gems"){
+    if(saveData.account.gems<10) return;
+    saveData.account.gems-=10;
+  }else return;
+  game.continueUsed=true;
+  game.player.hp=game.player.maxHp;
+  game.player.inv=3;
+  game.player.x=W/2;
+  game.player.y=H-95;
+  game.enemyBullets.length=0;
+  game.enemies.length=0;
+  game.over=false;
+  game.paused=false;
+  saveGame();
+  hideOverlay();
+  startBgm();
+  popup(game.player.x,game.player.y-34,"이어하기!");
+}
+
+function finalGameOver(){
+  if(game.completed) return;
   stopBgm();
   game.over=true;
+  game.paused=false;
   game.completed=true;
   game.boss=null;
   game.bossActive=false;
@@ -1769,7 +1850,7 @@ function updateHud(){
   }
   game.lastExpPercent=targetPercent;
   if(game.boss){
-    $("bossLevelText").textContent=`BOSS Lv.${game.boss.level}`;
+    $("bossLevelText").textContent=`보스 비행체 Lv.${game.boss.level}`;
     $("bossHpText").textContent=`${Math.max(0,Math.ceil(game.boss.hp))} / ${game.boss.maxHp}`;
     $("bossBar").style.width=Math.max(0,game.boss.hp/game.boss.maxHp*100)+"%";
   }
@@ -1820,7 +1901,7 @@ function draw(){
     ctx.fillStyle="#071426";ctx.fillRect(-19,-6,6,6);ctx.fillRect(13,-6,6,6);
     ctx.fillStyle="#071426";ctx.fillRect(-20,14,40,7);
     ctx.fillStyle="#ffe66d";ctx.font="bold 13px sans-serif";ctx.textAlign="center";
-    ctx.shadowColor="rgba(0,0,0,.9)";ctx.shadowBlur=4;ctx.fillText(`BOSS Lv.${b.level}`,0,-46);ctx.shadowBlur=0;
+    ctx.shadowColor="rgba(0,0,0,.9)";ctx.shadowBlur=4;ctx.fillText(`보스 비행체 Lv.${b.level}`,0,-46);ctx.shadowBlur=0;
     ctx.restore();
   }
 
